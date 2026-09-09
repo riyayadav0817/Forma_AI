@@ -1,122 +1,111 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [claim, setClaim] = useState("");
+  const [form, setForm] = useState({
+    incidentType: "",
+    vehicle: "",
+    location: "",
+    damage: "",
+    date: "",
+  });
+
+  const extractClaim = () => {
+    const text = claim.toLowerCase();
+
+    setForm({
+      incidentType: text.includes("deer")
+        ? "Animal Collision"
+        : "Vehicle Accident",
+      vehicle: text.includes("honda") ? "Honda" : "",
+      location: text.includes("i-95") ? "I-95" : "",
+      damage: text.includes("windshield")
+        ? "Windshield Damage"
+        : "",
+      date: text.includes("yesterday") ? "Yesterday" : "",
+    });
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+    <div className="container">
+      <h1>Forma AI 🤖</h1>
+      <p>AI-powered dynamic insurance claim form</p>
+
+      <section className="card">
+        <h2>✨ Magic Input</h2>
+
+        <textarea
+          placeholder="Describe your insurance claim..."
+          value={claim}
+          onChange={(e) => setClaim(e.target.value)}
+        />
+
+        <button onClick={extractClaim}>
+          Extract Information
         </button>
       </section>
 
-      <div className="ticks"></div>
+      <section className="card">
+        <h2>📋 Claim Form</h2>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
+        <label>Incident Type</label>
+        <input
+          value={form.incidentType}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              incidentType: e.target.value,
+            })
+          }
+        />
+
+        <label>Vehicle</label>
+        <input
+          value={form.vehicle}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              vehicle: e.target.value,
+            })
+          }
+        />
+
+        <label>Location</label>
+        <input
+          value={form.location}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              location: e.target.value,
+            })
+          }
+        />
+
+        <label>Damage</label>
+        <input
+          value={form.damage}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              damage: e.target.value,
+            })
+          }
+        />
+
+        <label>Date</label>
+        <input
+          value={form.date}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              date: e.target.value,
+            })
+          }
+        />
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;

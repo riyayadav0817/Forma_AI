@@ -29,36 +29,74 @@ app.post("/api/ai/extract", async (req, res) => {
   try {
     const { claim } = req.body;
 
-    if (!claim) {
+    if (!claim || !claim.trim()) {
       return res.status(400).json({
+        success: false,
         error: "Claim text is required",
       });
     }
 
     const response = await client.responses.create({
       model: "gpt-5-mini",
-      input: `
-Extract insurance claim information from the following text.
 
-Return ONLY valid JSON with these fields:
-{
-  "incidentType": "",
-  "vehicle": "",
-  "location": "",
-  "damage": "",
-  "date": ""
-}
+      input: `
+Extract information from this insurance claim.
 
 Claim:
 ${claim}
+
+Extract:
+- incidentType
+- vehicle
+- location
+- damage
+- date
+
+If a field is not mentioned, return an empty string.
       `,
+
+      text: {
+        format: {
+          type: "json_schema",
+          name: "insurance_claim",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              incidentType: {
+                type: "string",
+              },
+              vehicle: {
+                type: "string",
+              },
+              location: {
+                type: "string",
+              },
+              damage: {
+                type: "string",
+              },
+              date: {
+                type: "string",
+              },
+            },
+            required: [
+              "incidentType",
+              "vehicle",
+              "location",
+              "damage",
+              "date",
+            ],
+            additionalProperties: false,
+          },
+        },
+      },
     });
 
-    const result = response.output_text;
+    const extractedData = JSON.parse(response.output_text);
 
     res.json({
       success: true,
-      data: JSON.parse(result),
+      data: extractedData,
     });
   } catch (error) {
     console.error("AI extraction error:", error);

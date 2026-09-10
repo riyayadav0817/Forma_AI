@@ -3,6 +3,7 @@ import "./App.css";
 
 function App() {
   const [claim, setClaim] = useState("");
+
   const [form, setForm] = useState({
     incidentType: "",
     vehicle: "",
@@ -11,20 +12,43 @@ function App() {
     date: "",
   });
 
-  const extractClaim = () => {
-    const text = claim.toLowerCase();
+  const [loading, setLoading] = useState(false);
 
-    setForm({
-      incidentType: text.includes("deer")
-        ? "Animal Collision"
-        : "Vehicle Accident",
-      vehicle: text.includes("honda") ? "Honda" : "",
-      location: text.includes("i-95") ? "I-95" : "",
-      damage: text.includes("windshield")
-        ? "Windshield Damage"
-        : "",
-      date: text.includes("yesterday") ? "Yesterday" : "",
-    });
+  const extractClaim = async () => {
+    if (!claim.trim()) {
+      alert("Please describe your claim first.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        "http://localhost:5000/api/ai/extract",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            claim: claim,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "AI extraction failed");
+      }
+
+      setForm(result.data);
+    } catch (error) {
+      console.error("Extraction error:", error);
+      alert("AI extraction failed. Make sure the backend is running.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -41,8 +65,8 @@ function App() {
           onChange={(e) => setClaim(e.target.value)}
         />
 
-        <button onClick={extractClaim}>
-          Extract Information
+        <button onClick={extractClaim} disabled={loading}>
+          {loading ? "Extracting..." : "Extract Information"}
         </button>
       </section>
 

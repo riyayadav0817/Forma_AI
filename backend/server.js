@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const OpenAI = require("openai");
 require("dotenv").config();
 
 const app = express();
@@ -8,9 +7,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+/* =========================
+   Basic Routes
+========================= */
 
 app.get("/", (req, res) => {
   res.json({
@@ -25,6 +24,10 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+/* =========================
+   Mock AI Extraction
+========================= */
+
 app.post("/api/ai/extract", async (req, res) => {
   try {
     const { claim } = req.body;
@@ -36,77 +39,136 @@ app.post("/api/ai/extract", async (req, res) => {
       });
     }
 
-    const response = await client.responses.create({
-      model: "gpt-5-mini",
+    const text = claim.toLowerCase();
 
-      input: `
-Extract information from this insurance claim.
+    let incidentType = "";
+    let vehicle = "";
+    let location = "";
+    let damage = "";
+    let date = "";
 
-Claim:
-${claim}
+    /* -------------------------
+       Incident Type
+    ------------------------- */
 
-Extract:
-- incidentType
-- vehicle
-- location
-- damage
-- date
+    if (
+      text.includes("deer") ||
+      text.includes("animal") ||
+      text.includes("dog") ||
+      text.includes("cow")
+    ) {
+      incidentType = "Animal Collision";
+    } else if (
+      text.includes("stolen") ||
+      text.includes("theft") ||
+      text.includes("robbed")
+    ) {
+      incidentType = "Theft";
+    } else if (
+      text.includes("accident") ||
+      text.includes("crash") ||
+      text.includes("collision")
+    ) {
+      incidentType = "Accident";
+    }
 
-If a field is not mentioned, return an empty string.
-      `,
+    /* -------------------------
+       Vehicle
+    ------------------------- */
 
-      text: {
-        format: {
-          type: "json_schema",
-          name: "insurance_claim",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              incidentType: {
-                type: "string",
-              },
-              vehicle: {
-                type: "string",
-              },
-              location: {
-                type: "string",
-              },
-              damage: {
-                type: "string",
-              },
-              date: {
-                type: "string",
-              },
-            },
-            required: [
-              "incidentType",
-              "vehicle",
-              "location",
-              "damage",
-              "date",
-            ],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
+    if (text.includes("honda")) {
+      vehicle = "Honda";
+    } else if (text.includes("toyota")) {
+      vehicle = "Toyota";
+    } else if (text.includes("bmw")) {
+      vehicle = "BMW";
+    } else if (text.includes("ford")) {
+      vehicle = "Ford";
+    }
 
-    const extractedData = JSON.parse(response.output_text);
+    /* -------------------------
+       Location
+    ------------------------- */
+
+    const locationMatch = claim.match(
+      /\b(I-\d+|NH-\d+|Highway|highway|parking lot|parking area)\b/i
+    );
+
+    if (locationMatch) {
+      location = locationMatch[0];
+    }
+
+    /* -------------------------
+       Damage
+    ------------------------- */
+
+    const damageWords = [];
+
+    if (text.includes("windshield")) {
+      damageWords.push("Windshield damaged");
+    }
+
+    if (text.includes("bumper")) {
+      damageWords.push("Bumper damaged");
+    }
+
+    if (text.includes("door")) {
+      damageWords.push("Door damaged");
+    }
+
+    if (text.includes("glass")) {
+      damageWords.push("Glass damaged");
+    }
+
+    if (text.includes("broken")) {
+      damageWords.push("Vehicle part broken");
+    }
+
+    if (text.includes("shattered")) {
+      damageWords.push("Vehicle glass shattered");
+    }
+
+    damage = damageWords.join(", ");
+
+    /* -------------------------
+       Date
+    ------------------------- */
+
+    if (text.includes("yesterday")) {
+      date = "Yesterday";
+    } else if (text.includes("today")) {
+      date = "Today";
+    } else if (text.includes("last night")) {
+      date = "Last night";
+    }
+
+    /* -------------------------
+       Response
+    ------------------------- */
 
     res.json({
       success: true,
-      data: extractedData,
+      data: {
+        incidentType,
+        vehicle,
+        location,
+        damage,
+        date,
+      },
     });
   } catch (error) {
-    console.error("AI extraction error:", error);
+    console.error("Extraction error:", error);
 
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: "Extraction failed",
     });
   }
 });
+
+/* =========================
+   Start Server
+========================= */
 
 const PORT = 5000;
 

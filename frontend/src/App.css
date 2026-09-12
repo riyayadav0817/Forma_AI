@@ -1,149 +1,347 @@
+/* =========================================
+   Forma AI - Main Styles
+   ========================================= */
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   font-family:
-    Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
-  background: #f5f7fb;
+
+  background: #f4f6fb;
   color: #172033;
 }
+
+/* =========================================
+   Main Container
+   ========================================= */
 
 .container {
   width: min(100% - 32px, 1000px);
   margin: 0 auto;
-  padding: 50px 0 70px;
+  padding: 55px 0 80px;
 }
 
-/* Header */
+/* =========================================
+   Header
+   ========================================= */
 
 .container > h1 {
   margin: 0;
-  font-size: 42px;
+
+  font-size: 44px;
   font-weight: 800;
-  letter-spacing: -1.5px;
+  line-height: 1.15;
+  letter-spacing: -1.8px;
+
+  color: #111827;
 }
 
 .container > p {
-  margin: 8px 0 35px;
-  color: #667085;
+  margin: 10px 0 35px;
+
   font-size: 17px;
+  line-height: 1.6;
+
+  color: #667085;
 }
 
-/* Cards */
+/* =========================================
+   Cards
+   ========================================= */
 
 .card {
-  background: #ffffff;
+  margin-top: 24px;
   padding: 30px;
-  margin-top: 22px;
+
+  background: #ffffff;
+
   border: 1px solid #e5e7eb;
   border-radius: 18px;
-  box-shadow: 0 8px 30px rgba(20, 30, 50, 0.06);
+
+  box-shadow:
+    0 10px 30px rgba(15, 23, 42, 0.06);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow:
+    0 14px 35px rgba(15, 23, 42, 0.08);
 }
 
 .card h2 {
   margin: 0 0 20px;
+
   font-size: 21px;
+  font-weight: 700;
+  line-height: 1.4;
+
+  color: #1f2937;
 }
 
-/* Magic Input */
+/* =========================================
+   Magic Input / Textarea
+   ========================================= */
 
 textarea {
   display: block;
+
   width: 100%;
-  min-height: 150px;
-  resize: vertical;
+  min-height: 160px;
+
   padding: 16px;
+
+  resize: vertical;
+
   border: 1px solid #d0d5dd;
   border-radius: 12px;
+
   outline: none;
-  font: inherit;
+
+  font-family: inherit;
   font-size: 15px;
   line-height: 1.6;
-  background: #fcfcfd;
-  transition: 0.2s ease;
+
+  /* Important: typed text visibility */
+  color: #172033;
+
+  background: #ffffff;
+
+  caret-color: #4f46e5;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 textarea::placeholder {
   color: #98a2b3;
+  opacity: 1;
+}
+
+textarea:hover {
+  border-color: #b8bec9;
 }
 
 textarea:focus {
   border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
-  background: #fff;
+
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.12);
 }
 
-/* Button */
+/* =========================================
+   Button
+   ========================================= */
 
 button {
-  margin-top: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 16px;
+
+  min-height: 46px;
   padding: 12px 22px;
+
   border: none;
   border-radius: 10px;
+
   background: #4f46e5;
-  color: white;
+  color: #ffffff;
+
+  font-family: inherit;
   font-size: 15px;
   font-weight: 600;
+
   cursor: pointer;
-  transition: 0.2s ease;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: #4338ca;
+
   transform: translateY(-1px);
+
+  box-shadow:
+    0 6px 15px rgba(79, 70, 229, 0.25);
 }
 
-button:active {
+button:active:not(:disabled) {
   transform: translateY(0);
 }
 
-/* Form */
+button:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+/* =========================================
+   Form Labels
+   ========================================= */
 
 label {
   display: block;
-  margin: 17px 0 7px;
+
+  margin: 18px 0 8px;
+
   font-size: 14px;
   font-weight: 600;
+
   color: #344054;
 }
 
+/* =========================================
+   Form Inputs
+   ========================================= */
+
 input {
   display: block;
+
   width: 100%;
   height: 46px;
+
   padding: 10px 13px;
+
   border: 1px solid #d0d5dd;
   border-radius: 10px;
+
   outline: none;
-  font: inherit;
+
+  font-family: inherit;
   font-size: 15px;
-  background: #fff;
-  transition: 0.2s ease;
+
+  /* Important: typed text visibility */
+  color: #172033;
+
+  background: #ffffff;
+
+  caret-color: #4f46e5;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+input::placeholder {
+  color: #98a2b3;
+  opacity: 1;
+}
+
+input:hover {
+  border-color: #b8bec9;
 }
 
 input:focus {
   border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+
+  box-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.10);
 }
 
-/* Mobile */
+/* =========================================
+   Disabled Inputs
+   ========================================= */
 
-@media (max-width: 600px) {
+input:disabled,
+textarea:disabled {
+  background: #f2f4f7;
+  color: #667085;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   Extra Safety for Text Visibility
+   ========================================= */
+
+textarea,
+input {
+  color: #172033 !important;
+  -webkit-text-fill-color: #172033;
+}
+
+textarea::placeholder,
+input::placeholder {
+  color: #98a2b3;
+  -webkit-text-fill-color: #98a2b3;
+}
+
+/* =========================================
+   Mobile Responsive
+   ========================================= */
+
+@media (max-width: 700px) {
   .container {
-    width: min(100% - 20px, 1000px);
-    padding-top: 30px;
+    width: min(100% - 24px, 1000px);
+
+    padding-top: 35px;
+    padding-bottom: 50px;
   }
 
   .container > h1 {
-    font-size: 32px;
+    font-size: 34px;
+    letter-spacing: -1px;
+  }
+
+  .container > p {
+    font-size: 15px;
+    margin-bottom: 25px;
   }
 
   .card {
-    padding: 20px;
+    padding: 22px;
+    border-radius: 15px;
+  }
+
+  .card h2 {
+    font-size: 19px;
+  }
+
+  textarea {
+    min-height: 140px;
+  }
+}
+
+/* =========================================
+   Small Mobile
+   ========================================= */
+
+@media (max-width: 420px) {
+  .container {
+    width: calc(100% - 20px);
+    padding-top: 25px;
+  }
+
+  .container > h1 {
+    font-size: 30px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  button {
+    width: 100%;
   }
 }

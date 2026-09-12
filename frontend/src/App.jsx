@@ -10,10 +10,60 @@ function App() {
     location: "",
     damage: "",
     date: "",
+    policeReportNumber: "",
+    animalDetails: "",
   });
 
   const [loading, setLoading] = useState(false);
 
+  // Dynamic form schema
+  const formFields = [
+    {
+      name: "incidentType",
+      label: "Incident Type",
+      type: "text",
+    },
+    {
+      name: "vehicle",
+      label: "Vehicle",
+      type: "text",
+    },
+    {
+      name: "location",
+      label: "Location",
+      type: "text",
+    },
+    {
+      name: "damage",
+      label: "Damage",
+      type: "text",
+    },
+    {
+      name: "date",
+      label: "Date",
+      type: "text",
+    },
+    {
+      name: "policeReportNumber",
+      label: "Police Report Number",
+      type: "text",
+      showIf: {
+        field: "incidentType",
+        equals: "Theft",
+      },
+    },
+    {
+      name: "animalDetails",
+      label: "Animal Details",
+      type: "text",
+      showIf: {
+        field: "incidentType",
+        equals: "Animal Collision",
+      },
+    },
+  ];
+
+  // AI extraction
   const extractClaim = async () => {
     if (!claim.trim()) {
       alert("Please describe your claim first.");
@@ -42,20 +92,36 @@ function App() {
         throw new Error(result.error || "AI extraction failed");
       }
 
-      setForm(result.data);
+      setForm({
+        ...form,
+        ...result.data,
+      });
     } catch (error) {
       console.error("Extraction error:", error);
-      alert("AI extraction failed. Make sure the backend is running.");
+
+      alert(
+        "AI extraction failed. Make sure the backend is running and API credits are available."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // Handle manual field changes
+  const handleChange = (fieldName, value) => {
+    setForm({
+      ...form,
+      [fieldName]: value,
+    });
+  };
+
   return (
     <div className="container">
       <h1>Forma AI 🤖</h1>
+
       <p>AI-powered dynamic insurance claim form</p>
 
+      {/* Magic Input */}
       <section className="card">
         <h2>✨ Magic Input</h2>
 
@@ -65,68 +131,46 @@ function App() {
           onChange={(e) => setClaim(e.target.value)}
         />
 
-        <button onClick={extractClaim} disabled={loading}>
-          {loading ? "Extracting..." : "Extract Information"}
+        <button
+          onClick={extractClaim}
+          disabled={loading}
+        >
+          {loading
+            ? "Extracting..."
+            : "Extract Information"}
         </button>
       </section>
 
+      {/* Dynamic Claim Form */}
       <section className="card">
         <h2>📋 Claim Form</h2>
 
-        <label>Incident Type</label>
-        <input
-          value={form.incidentType}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              incidentType: e.target.value,
-            })
+        {formFields.map((field) => {
+          // Conditional field logic
+          if (
+            field.showIf &&
+            form[field.showIf.field] !== field.showIf.equals
+          ) {
+            return null;
           }
-        />
 
-        <label>Vehicle</label>
-        <input
-          value={form.vehicle}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              vehicle: e.target.value,
-            })
-          }
-        />
+          return (
+            <div key={field.name}>
+              <label>{field.label}</label>
 
-        <label>Location</label>
-        <input
-          value={form.location}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              location: e.target.value,
-            })
-          }
-        />
-
-        <label>Damage</label>
-        <input
-          value={form.damage}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              damage: e.target.value,
-            })
-          }
-        />
-
-        <label>Date</label>
-        <input
-          value={form.date}
-          onChange={(e) =>
-            setForm({
-              ...form,
-              date: e.target.value,
-            })
-          }
-        />
+              <input
+                type={field.type}
+                value={form[field.name] || ""}
+                onChange={(e) =>
+                  handleChange(
+                    field.name,
+                    e.target.value
+                  )
+                }
+              />
+            </div>
+          );
+        })}
       </section>
     </div>
   );

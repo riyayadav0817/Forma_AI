@@ -1,11 +1,27 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 require("dotenv").config();
+
+const Claim = require("./models/Claim");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+/* =========================
+   MongoDB Connection
+========================= */
+
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log("MongoDB connected successfully");
+  })
+  .catch((error) => {
+    console.error("MongoDB connection error:", error.message);
+  });
 
 /* =========================
    Basic Routes
@@ -47,10 +63,6 @@ app.post("/api/ai/extract", async (req, res) => {
     let damage = "";
     let date = "";
 
-    /* -------------------------
-       Incident Type
-    ------------------------- */
-
     if (
       text.includes("deer") ||
       text.includes("animal") ||
@@ -72,10 +84,6 @@ app.post("/api/ai/extract", async (req, res) => {
       incidentType = "Accident";
     }
 
-    /* -------------------------
-       Vehicle
-    ------------------------- */
-
     if (text.includes("honda")) {
       vehicle = "Honda";
     } else if (text.includes("toyota")) {
@@ -86,10 +94,6 @@ app.post("/api/ai/extract", async (req, res) => {
       vehicle = "Ford";
     }
 
-    /* -------------------------
-       Location
-    ------------------------- */
-
     const locationMatch = claim.match(
       /\b(I-\d+|NH-\d+|Highway|highway|parking lot|parking area)\b/i
     );
@@ -97,10 +101,6 @@ app.post("/api/ai/extract", async (req, res) => {
     if (locationMatch) {
       location = locationMatch[0];
     }
-
-    /* -------------------------
-       Damage
-    ------------------------- */
 
     const damageWords = [];
 
@@ -130,10 +130,6 @@ app.post("/api/ai/extract", async (req, res) => {
 
     damage = damageWords.join(", ");
 
-    /* -------------------------
-       Date
-    ------------------------- */
-
     if (text.includes("yesterday")) {
       date = "Yesterday";
     } else if (text.includes("today")) {
@@ -141,10 +137,6 @@ app.post("/api/ai/extract", async (req, res) => {
     } else if (text.includes("last night")) {
       date = "Last night";
     }
-
-    /* -------------------------
-       Response
-    ------------------------- */
 
     res.json({
       success: true,
@@ -162,6 +154,40 @@ app.post("/api/ai/extract", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Extraction failed",
+    });
+  }
+});
+
+/* =========================
+   Save Claim
+========================= */
+
+app.post("/api/claims", async (req, res) => {
+  try {
+    const { claimText, extractedData } = req.body;
+
+    if (!claimText || !claimText.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Claim text is required",
+      });
+    }
+
+    const savedClaim = await Claim.create({
+      claimText,
+      extractedData,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: savedClaim,
+    });
+  } catch (error) {
+    console.error("Save claim error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to save claim",
     });
   }
 });

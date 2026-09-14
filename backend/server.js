@@ -11,19 +11,6 @@ app.use(cors());
 app.use(express.json());
 
 /* =========================
-   MongoDB Connection
-========================= */
-
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("MongoDB connected successfully");
-  })
-  .catch((error) => {
-    console.error("MongoDB connection error:", error.message);
-  });
-
-/* =========================
    Basic Routes
 ========================= */
 
@@ -63,6 +50,7 @@ app.post("/api/ai/extract", async (req, res) => {
     let damage = "";
     let date = "";
 
+    // Incident type detection
     if (
       text.includes("deer") ||
       text.includes("animal") ||
@@ -84,6 +72,7 @@ app.post("/api/ai/extract", async (req, res) => {
       incidentType = "Accident";
     }
 
+    // Vehicle detection
     if (text.includes("honda")) {
       vehicle = "Honda";
     } else if (text.includes("toyota")) {
@@ -94,6 +83,7 @@ app.post("/api/ai/extract", async (req, res) => {
       vehicle = "Ford";
     }
 
+    // Location detection
     const locationMatch = claim.match(
       /\b(I-\d+|NH-\d+|Highway|highway|parking lot|parking area)\b/i
     );
@@ -102,6 +92,7 @@ app.post("/api/ai/extract", async (req, res) => {
       location = locationMatch[0];
     }
 
+    // Damage detection
     const damageWords = [];
 
     if (text.includes("windshield")) {
@@ -130,6 +121,7 @@ app.post("/api/ai/extract", async (req, res) => {
 
     damage = damageWords.join(", ");
 
+    // Date detection
     if (text.includes("yesterday")) {
       date = "Yesterday";
     } else if (text.includes("today")) {
@@ -193,11 +185,82 @@ app.post("/api/claims", async (req, res) => {
 });
 
 /* =========================
-   Start Server
+   Get All Claims
+========================= */
+
+app.get("/api/claims", async (req, res) => {
+  try {
+    const claims = await Claim.find()
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: claims,
+    });
+  } catch (error) {
+    console.error("Fetch claims error:", error);
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch claims",
+    });
+  }
+});
+
+/* =========================
+   Get Single Claim
+========================= */
+
+app.get("/api/claims/:id", async (req, res) => {
+  try {
+    const claim = await Claim.findById(req.params.id);
+
+    if (!claim) {
+      return res.status(404).json({
+        success: false,
+        error: "Claim not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: claim,
+    });
+  } catch (error) {
+    console.error(
+      "Fetch single claim error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch claim",
+    });
+  }
+});
+
+/* =========================
+   MongoDB + Start Server
 ========================= */
 
 const PORT = 5000;
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log(
+      "MongoDB connected successfully"
+    );
+
+    app.listen(PORT, () => {
+      console.log(
+        `Backend running on http://localhost:${PORT}`
+      );
+    });
+  })
+  .catch((error) => {
+    console.error(
+      "MongoDB connection error:",
+      error.message
+    );
+  });

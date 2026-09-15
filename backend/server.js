@@ -317,3 +317,303 @@ mongoose
       error.message
     );
   });
+
+/* =========================
+   Smart Missing-Field Detection
+========================= */
+
+app.post("/api/claims/check-missing", async (req, res) => {
+  try {
+    const { extractedData } = req.body;
+
+    if (!extractedData) {
+      return res.status(400).json({
+        success: false,
+        error: "Extracted claim data is required",
+      });
+    }
+
+    const missingFields = [];
+
+    // Common required fields
+    if (!extractedData.incidentType?.trim()) {
+      missingFields.push({
+        field: "incidentType",
+        label: "Incident Type",
+        message: "Please specify what type of incident occurred.",
+      });
+    }
+
+    if (!extractedData.vehicle?.trim()) {
+      missingFields.push({
+        field: "vehicle",
+        label: "Vehicle",
+        message: "Please provide the vehicle details.",
+      });
+    }
+
+    if (!extractedData.location?.trim()) {
+      missingFields.push({
+        field: "location",
+        label: "Location",
+        message: "Please provide where the incident occurred.",
+      });
+    }
+
+    if (!extractedData.damage?.trim()) {
+      missingFields.push({
+        field: "damage",
+        label: "Damage",
+        message: "Please describe the damage.",
+      });
+    }
+
+    if (!extractedData.date?.trim()) {
+      missingFields.push({
+        field: "date",
+        label: "Incident Date",
+        message: "Please provide when the incident occurred.",
+      });
+    }
+
+    // Conditional required fields
+    if (
+      extractedData.incidentType === "Theft" &&
+      !extractedData.policeReportNumber?.trim()
+    ) {
+      missingFields.push({
+        field: "policeReportNumber",
+        label: "Police Report Number",
+        message:
+          "A police report number is required for theft claims.",
+      });
+    }
+
+    if (
+      extractedData.incidentType === "Animal Collision" &&
+      !extractedData.animalDetails?.trim()
+    ) {
+      missingFields.push({
+        field: "animalDetails",
+        label: "Animal Details",
+        message:
+          "Please provide details about the animal involved.",
+      });
+    }
+
+    res.json({
+      success: true,
+      complete: missingFields.length === 0,
+      missingFields,
+      missingCount: missingFields.length,
+    });
+  } catch (error) {
+    console.error(
+      "Missing field detection error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to check missing fields",
+    });
+  }
+});
+
+/* =========================
+   Smart Missing-Field Detection
+   + Claim Readiness Score
+========================= */
+
+app.post("/api/claims/check-missing", async (req, res) => {
+  try {
+    const { extractedData } = req.body;
+
+    if (!extractedData) {
+      return res.status(400).json({
+        success: false,
+        error: "Extracted claim data is required",
+      });
+    }
+
+    const missingFields = [];
+
+    // Common required fields
+    if (!extractedData.incidentType?.trim()) {
+      missingFields.push({
+        field: "incidentType",
+        label: "Incident Type",
+        message:
+          "Please specify what type of incident occurred.",
+      });
+    }
+
+    if (!extractedData.vehicle?.trim()) {
+      missingFields.push({
+        field: "vehicle",
+        label: "Vehicle",
+        message:
+          "Please provide the vehicle details.",
+      });
+    }
+
+    if (!extractedData.location?.trim()) {
+      missingFields.push({
+        field: "location",
+        label: "Location",
+        message:
+          "Please provide where the incident occurred.",
+      });
+    }
+
+    if (!extractedData.damage?.trim()) {
+      missingFields.push({
+        field: "damage",
+        label: "Damage",
+        message:
+          "Please describe the damage.",
+      });
+    }
+
+    if (!extractedData.date?.trim()) {
+      missingFields.push({
+        field: "date",
+        label: "Incident Date",
+        message:
+          "Please provide when the incident occurred.",
+      });
+    }
+
+    // Conditional required fields
+    if (
+      extractedData.incidentType === "Theft" &&
+      !extractedData.policeReportNumber?.trim()
+    ) {
+      missingFields.push({
+        field: "policeReportNumber",
+        label: "Police Report Number",
+        message:
+          "A police report number is required for theft claims.",
+      });
+    }
+
+    if (
+      extractedData.incidentType ===
+        "Animal Collision" &&
+      !extractedData.animalDetails?.trim()
+    ) {
+      missingFields.push({
+        field: "animalDetails",
+        label: "Animal Details",
+        message:
+          "Please provide details about the animal involved.",
+      });
+    }
+
+    // =========================
+    // Readiness Score
+    // =========================
+
+    const totalRequiredFields =
+      extractedData.incidentType === "Theft" ||
+      extractedData.incidentType ===
+        "Animal Collision"
+        ? 7
+        : 5;
+
+    const completedFields =
+      totalRequiredFields -
+      missingFields.length;
+
+    const readinessScore = Math.round(
+      (completedFields / totalRequiredFields) *
+        100
+    );
+
+    res.json({
+      success: true,
+      complete: missingFields.length === 0,
+      missingFields,
+      missingCount: missingFields.length,
+      readinessScore,
+    });
+  } catch (error) {
+    console.error(
+      "Missing field detection error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      error:
+        "Failed to check missing fields",
+    });
+  }
+});
+
+/* =========================
+   AI-Generated Claim Summary
+========================= */
+
+app.post("/api/claims/generate-summary", async (req, res) => {
+  try {
+    const { claimText, extractedData } = req.body;
+
+    if (!claimText || !claimText.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Claim text is required",
+      });
+    }
+
+    if (!extractedData) {
+      return res.status(400).json({
+        success: false,
+        error: "Extracted claim data is required",
+      });
+    }
+
+    // Temporary mock AI summary
+    // Later this can be replaced with a real LLM call.
+
+    const incidentType =
+      extractedData.incidentType || "insurance incident";
+
+    const vehicle =
+      extractedData.vehicle || "vehicle details not provided";
+
+    const location =
+      extractedData.location || "location not provided";
+
+    const damage =
+      extractedData.damage || "damage details not provided";
+
+    const date =
+      extractedData.date || "incident date not provided";
+
+    let summary = `The policyholder reported a ${incidentType.toLowerCase()} involving ${vehicle}. The incident occurred at ${location} on ${date}. Reported damage/details include: ${damage}.`;
+
+    if (extractedData.policeReportNumber) {
+      summary += ` The associated police report number is ${extractedData.policeReportNumber}.`;
+    }
+
+    if (extractedData.animalDetails) {
+      summary += ` The animal involved was described as ${extractedData.animalDetails}.`;
+    }
+
+    res.json({
+      success: true,
+      summary,
+    });
+  } catch (error) {
+    console.error(
+      "Generate summary error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to generate claim summary",
+    });
+  }
+});

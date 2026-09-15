@@ -24,6 +24,18 @@ function App() {
   const [editingClaimId, setEditingClaimId] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
 
+  // Smart Missing-Field Detection
+  const [missingFields, setMissingFields] = useState([]);
+  const [checkingMissing, setCheckingMissing] = useState(false);
+  const [claimComplete, setClaimComplete] = useState(null);
+
+  // Claim Readiness Score
+  const [readinessScore, setReadinessScore] = useState(null);
+
+  // AI Claim Summary
+  const [summary, setSummary] = useState("");
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   // =========================
   // Dynamic Form Schema
   // =========================
@@ -112,6 +124,12 @@ function App() {
         ...form,
         ...result.data,
       });
+
+      // Reset previous results
+      setMissingFields([]);
+      setClaimComplete(null);
+      setReadinessScore(null);
+      setSummary("");
     } catch (error) {
       console.error("Extraction error:", error);
 
@@ -124,29 +142,73 @@ function App() {
   };
 
   // =========================
-  // Save New Claim
+  // Check Missing Fields
   // =========================
 
-  const saveClaim = async () => {
+  const checkMissingFields = async () => {
+    try {
+      setCheckingMissing(true);
+
+      const response = await fetch(
+        "http://localhost:5000/api/claims/check-missing",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            extractedData: form,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "Failed to check missing fields"
+        );
+      }
+
+      setMissingFields(
+        result.missingFields || []
+      );
+
+      setClaimComplete(result.complete);
+
+      setReadinessScore(
+        result.readinessScore ?? null
+      );
+    } catch (error) {
+      console.error(
+        "Missing field check error:",
+        error
+      );
+
+      alert(
+        "Failed to check missing information."
+      );
+    } finally {
+      setCheckingMissing(false);
+    }
+  };
+
+  // =========================
+  // Generate AI Claim Summary
+  // =========================
+
+  const generateSummary = async () => {
     if (!claim.trim()) {
       alert("Please describe your claim first.");
       return;
     }
 
-    // If editing an existing claim,
-    // update functionality will be added next.
-    if (editingClaimId) {
-      alert(
-        "Update functionality will be added in the next step."
-      );
-      return;
-    }
-
     try {
-      setSaving(true);
+      setSummaryLoading(true);
 
       const response = await fetch(
-        "http://localhost:5000/api/claims",
+        "http://localhost:5000/api/claims/generate-summary",
         {
           method: "POST",
           headers: {
@@ -163,18 +225,85 @@ function App() {
 
       if (!response.ok) {
         throw new Error(
+          result.error ||
+            "Failed to generate claim summary"
+        );
+      }
+
+      setSummary(result.summary || "");
+    } catch (error) {
+      console.error(
+        "Generate summary error:",
+        error
+      );
+
+      alert(
+        "Failed to generate claim summary."
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
+  // =========================
+  // Save / Update Claim
+  // =========================
+
+  const saveClaim = async () => {
+    if (!claim.trim()) {
+      alert("Please describe your claim first.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+
+      const url = editingClaimId
+        ? `http://localhost:5000/api/claims/${editingClaimId}`
+        : "http://localhost:5000/api/claims";
+
+      const method = editingClaimId
+        ? "PUT"
+        : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          claimText: claim,
+          extractedData: form,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
           result.error || "Failed to save claim"
         );
       }
 
-      alert("Claim saved successfully! 🎉");
+      if (editingClaimId) {
+        alert("Claim updated successfully! 🎉");
+      } else {
+        alert("Claim saved successfully! 🎉");
+      }
+
+      setEditingClaimId(null);
 
       await fetchClaims();
     } catch (error) {
-      console.error("Save claim error:", error);
+      console.error(
+        "Save claim error:",
+        error
+      );
 
       alert(
-        "Failed to save claim. Please try again."
+        editingClaimId
+          ? "Failed to update claim."
+          : "Failed to save claim."
       );
     } finally {
       setSaving(false);
@@ -203,7 +332,10 @@ function App() {
 
       setClaims(result.data);
     } catch (error) {
-      console.error("Fetch claims error:", error);
+      console.error(
+        "Fetch claims error:",
+        error
+      );
 
       alert("Failed to load saved claims.");
     } finally {
@@ -239,19 +371,24 @@ function App() {
       // Load extracted form data
       setForm({
         incidentType:
-          savedClaim.extractedData?.incidentType || "",
+          savedClaim.extractedData
+            ?.incidentType || "",
 
         vehicle:
-          savedClaim.extractedData?.vehicle || "",
+          savedClaim.extractedData
+            ?.vehicle || "",
 
         location:
-          savedClaim.extractedData?.location || "",
+          savedClaim.extractedData
+            ?.location || "",
 
         damage:
-          savedClaim.extractedData?.damage || "",
+          savedClaim.extractedData
+            ?.damage || "",
 
         date:
-          savedClaim.extractedData?.date || "",
+          savedClaim.extractedData
+            ?.date || "",
 
         policeReportNumber:
           savedClaim.extractedData
@@ -265,13 +402,22 @@ function App() {
       // Store currently editing claim ID
       setEditingClaimId(savedClaim._id);
 
-      // Scroll to top so user can edit
+      // Reset completeness + summary
+      setMissingFields([]);
+      setClaimComplete(null);
+      setReadinessScore(null);
+      setSummary("");
+
+      // Scroll to top
       window.scrollTo({
         top: 0,
         behavior: "smooth",
       });
     } catch (error) {
-      console.error("Open claim error:", error);
+      console.error(
+        "Open claim error:",
+        error
+      );
 
       alert("Failed to open claim.");
     } finally {
@@ -297,6 +443,11 @@ function App() {
       policeReportNumber: "",
       animalDetails: "",
     });
+
+    setMissingFields([]);
+    setClaimComplete(null);
+    setReadinessScore(null);
+    setSummary("");
   };
 
   // =========================
@@ -308,13 +459,23 @@ function App() {
       ...form,
       [fieldName]: value,
     });
+
+    // Clear previous completeness result
+    setClaimComplete(null);
+    setMissingFields([]);
+    setReadinessScore(null);
+
+    // Summary is based on old form data
+    setSummary("");
   };
 
   return (
     <div className="container">
       <h1>Forma AI 🤖</h1>
 
-      <p>AI-powered dynamic insurance claim form</p>
+      <p>
+        AI-powered dynamic insurance claim form
+      </p>
 
       {/* =========================
           Magic Input
@@ -332,9 +493,13 @@ function App() {
         <textarea
           placeholder="Describe your insurance claim..."
           value={claim}
-          onChange={(e) =>
-            setClaim(e.target.value)
-          }
+          onChange={(e) => {
+            setClaim(e.target.value);
+            setSummary("");
+            setClaimComplete(null);
+            setMissingFields([]);
+            setReadinessScore(null);
+          }}
         />
 
         <button
@@ -381,6 +546,148 @@ function App() {
             </div>
           );
         })}
+
+        {/* =========================
+            Smart Completeness Check
+        ========================= */}
+
+        <button
+          onClick={checkMissingFields}
+          disabled={checkingMissing}
+          type="button"
+        >
+          {checkingMissing
+            ? "Checking..."
+            : "🧠 Check Claim Completeness"}
+        </button>
+
+        {claimComplete !== null && (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "16px",
+              borderRadius: "12px",
+              backgroundColor: claimComplete
+                ? "#ecfdf5"
+                : "#fff7ed",
+              border: claimComplete
+                ? "1px solid #10b981"
+                : "1px solid #f59e0b",
+            }}
+          >
+            <h3>
+              {claimComplete
+                ? "✅ Claim Information Complete"
+                : "⚠️ Missing Information"}
+            </h3>
+
+            {!claimComplete && (
+              <>
+                <p>
+                  Please provide the following
+                  information:
+                </p>
+
+                <ul>
+                  {missingFields.map((item) => (
+                    <li key={item.field}>
+                      <strong>
+                        {item.label}:
+                      </strong>{" "}
+                      {item.message}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* =========================
+            Claim Readiness Score
+        ========================= */}
+
+        {readinessScore !== null && (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "18px",
+              borderRadius: "12px",
+              backgroundColor: "#f5f3ff",
+              border: "1px solid #8b5cf6",
+            }}
+          >
+            <h3>📊 Claim Readiness Score</h3>
+
+            <div
+              style={{
+                width: "100%",
+                height: "12px",
+                backgroundColor: "#e5e7eb",
+                borderRadius: "999px",
+                overflow: "hidden",
+                marginTop: "10px",
+              }}
+            >
+              <div
+                style={{
+                  width: `${readinessScore}%`,
+                  height: "100%",
+                  backgroundColor: "#7c3aed",
+                  transition: "width 0.4s ease",
+                }}
+              />
+            </div>
+
+            <p>
+              <strong>
+                {readinessScore}%
+              </strong>{" "}
+              claim information completed.
+            </p>
+          </div>
+        )}
+
+        {/* =========================
+            AI Claim Summary
+        ========================= */}
+
+        <button
+          onClick={generateSummary}
+          disabled={summaryLoading}
+          type="button"
+        >
+          {summaryLoading
+            ? "Generating Summary..."
+            : "✨ Generate AI Claim Summary"}
+        </button>
+
+        {summary && (
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "20px",
+              borderRadius: "12px",
+              backgroundColor: "#f8fafc",
+              border: "1px solid #cbd5e1",
+            }}
+          >
+            <h3>📝 AI-Generated Claim Summary</h3>
+
+            <p
+              style={{
+                lineHeight: "1.7",
+                marginTop: "12px",
+              }}
+            >
+              {summary}
+            </p>
+          </div>
+        )}
+
+        {/* =========================
+            Save / Update
+        ========================= */}
 
         <button
           onClick={saveClaim}
@@ -472,7 +779,6 @@ function App() {
                 {savedClaim._id}
               </p>
 
-              {/* Open / Resume Button */}
               <button
                 onClick={() =>
                   openClaim(savedClaim._id)

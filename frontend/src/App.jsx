@@ -20,7 +20,14 @@ function App() {
   const [claims, setClaims] = useState([]);
   const [claimsLoading, setClaimsLoading] = useState(false);
 
-  // Dynamic form schema
+  // Resume/Edit state
+  const [editingClaimId, setEditingClaimId] = useState(null);
+  const [editLoading, setEditLoading] = useState(false);
+
+  // =========================
+  // Dynamic Form Schema
+  // =========================
+
   const formFields = [
     {
       name: "incidentType",
@@ -117,12 +124,21 @@ function App() {
   };
 
   // =========================
-  // Save Claim to MongoDB
+  // Save New Claim
   // =========================
 
   const saveClaim = async () => {
     if (!claim.trim()) {
       alert("Please describe your claim first.");
+      return;
+    }
+
+    // If editing an existing claim,
+    // update functionality will be added next.
+    if (editingClaimId) {
+      alert(
+        "Update functionality will be added in the next step."
+      );
       return;
     }
 
@@ -153,7 +169,6 @@ function App() {
 
       alert("Claim saved successfully! 🎉");
 
-      // Refresh saved claims
       await fetchClaims();
     } catch (error) {
       console.error("Save claim error:", error);
@@ -167,7 +182,7 @@ function App() {
   };
 
   // =========================
-  // Fetch Saved Claims
+  // Fetch All Saved Claims
   // =========================
 
   const fetchClaims = async () => {
@@ -197,6 +212,94 @@ function App() {
   };
 
   // =========================
+  // Open / Resume Claim
+  // =========================
+
+  const openClaim = async (id) => {
+    try {
+      setEditLoading(true);
+
+      const response = await fetch(
+        `http://localhost:5000/api/claims/${id}`
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Failed to open claim"
+        );
+      }
+
+      const savedClaim = result.data;
+
+      // Load original claim text
+      setClaim(savedClaim.claimText || "");
+
+      // Load extracted form data
+      setForm({
+        incidentType:
+          savedClaim.extractedData?.incidentType || "",
+
+        vehicle:
+          savedClaim.extractedData?.vehicle || "",
+
+        location:
+          savedClaim.extractedData?.location || "",
+
+        damage:
+          savedClaim.extractedData?.damage || "",
+
+        date:
+          savedClaim.extractedData?.date || "",
+
+        policeReportNumber:
+          savedClaim.extractedData
+            ?.policeReportNumber || "",
+
+        animalDetails:
+          savedClaim.extractedData
+            ?.animalDetails || "",
+      });
+
+      // Store currently editing claim ID
+      setEditingClaimId(savedClaim._id);
+
+      // Scroll to top so user can edit
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    } catch (error) {
+      console.error("Open claim error:", error);
+
+      alert("Failed to open claim.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  // =========================
+  // Cancel Editing
+  // =========================
+
+  const cancelEditing = () => {
+    setEditingClaimId(null);
+
+    setClaim("");
+
+    setForm({
+      incidentType: "",
+      vehicle: "",
+      location: "",
+      damage: "",
+      date: "",
+      policeReportNumber: "",
+      animalDetails: "",
+    });
+  };
+
+  // =========================
   // Handle Manual Field Changes
   // =========================
 
@@ -220,10 +323,18 @@ function App() {
       <section className="card">
         <h2>✨ Magic Input</h2>
 
+        {editingClaimId && (
+          <p>
+            ✏️ You are editing a saved claim.
+          </p>
+        )}
+
         <textarea
           placeholder="Describe your insurance claim..."
           value={claim}
-          onChange={(e) => setClaim(e.target.value)}
+          onChange={(e) =>
+            setClaim(e.target.value)
+          }
         />
 
         <button
@@ -277,8 +388,19 @@ function App() {
         >
           {saving
             ? "Saving..."
+            : editingClaimId
+            ? "💾 Update Claim"
             : "💾 Save Claim"}
         </button>
+
+        {editingClaimId && (
+          <button
+            onClick={cancelEditing}
+            type="button"
+          >
+            ❌ Cancel Editing
+          </button>
+        )}
       </section>
 
       {/* =========================
@@ -297,7 +419,8 @@ function App() {
             : "🔄 Load Claims"}
         </button>
 
-        {claims.length === 0 && !claimsLoading ? (
+        {claims.length === 0 &&
+        !claimsLoading ? (
           <p>No saved claims yet.</p>
         ) : (
           claims.map((savedClaim) => (
@@ -348,6 +471,18 @@ function App() {
                 <strong>Claim ID:</strong>{" "}
                 {savedClaim._id}
               </p>
+
+              {/* Open / Resume Button */}
+              <button
+                onClick={() =>
+                  openClaim(savedClaim._id)
+                }
+                disabled={editLoading}
+              >
+                {editLoading
+                  ? "Opening..."
+                  : "✏️ Open & Edit"}
+              </button>
             </div>
           ))
         )}

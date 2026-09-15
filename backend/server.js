@@ -190,8 +190,9 @@ app.post("/api/claims", async (req, res) => {
 
 app.get("/api/claims", async (req, res) => {
   try {
-    const claims = await Claim.find()
-      .sort({ createdAt: -1 });
+    const claims = await Claim.find().sort({
+      createdAt: -1,
+    });
 
     res.json({
       success: true,
@@ -235,6 +236,58 @@ app.get("/api/claims/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch claim",
+    });
+  }
+});
+
+/* =========================
+   Update Claim
+========================= */
+
+app.put("/api/claims/:id", async (req, res) => {
+  try {
+    const { claimText, extractedData } = req.body;
+
+    if (!claimText || !claimText.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Claim text is required",
+      });
+    }
+
+    const updatedClaim =
+      await Claim.findByIdAndUpdate(
+        req.params.id,
+        {
+          claimText,
+          extractedData,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+
+    if (!updatedClaim) {
+      return res.status(404).json({
+        success: false,
+        error: "Claim not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updatedClaim,
+    });
+  } catch (error) {
+    console.error(
+      "Update claim error:",
+      error
+    );
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to update claim",
     });
   }
 });

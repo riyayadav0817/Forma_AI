@@ -20,19 +20,15 @@ function App() {
   const [claims, setClaims] = useState([]);
   const [claimsLoading, setClaimsLoading] = useState(false);
 
-  // Resume/Edit state
   const [editingClaimId, setEditingClaimId] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
 
-  // Smart Missing-Field Detection
   const [missingFields, setMissingFields] = useState([]);
   const [checkingMissing, setCheckingMissing] = useState(false);
   const [claimComplete, setClaimComplete] = useState(null);
 
-  // Claim Readiness Score
   const [readinessScore, setReadinessScore] = useState(null);
 
-  // AI Claim Summary
   const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -107,7 +103,7 @@ function App() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            claim: claim,
+            claim,
           }),
         }
       );
@@ -120,12 +116,11 @@ function App() {
         );
       }
 
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         ...result.data,
-      });
+      }));
 
-      // Reset previous results
       setMissingFields([]);
       setClaimComplete(null);
       setReadinessScore(null);
@@ -134,7 +129,9 @@ function App() {
       console.error("Extraction error:", error);
 
       alert(
-        "Extraction failed. Please check the backend."
+        `Extraction failed: ${
+          error.message || "Please check the backend."
+        }`
       );
     } finally {
       setLoading(false);
@@ -175,7 +172,9 @@ function App() {
         result.missingFields || []
       );
 
-      setClaimComplete(result.complete);
+      setClaimComplete(
+        result.complete ?? false
+      );
 
       setReadinessScore(
         result.readinessScore ?? null
@@ -187,7 +186,9 @@ function App() {
       );
 
       alert(
-        "Failed to check missing information."
+        `Failed to check missing information: ${
+          error.message || ""
+        }`
       );
     } finally {
       setCheckingMissing(false);
@@ -238,7 +239,9 @@ function App() {
       );
 
       alert(
-        "Failed to generate claim summary."
+        `Failed to generate claim summary: ${
+          error.message || ""
+        }`
       );
     } finally {
       setSummaryLoading(false);
@@ -285,11 +288,11 @@ function App() {
         );
       }
 
-      if (editingClaimId) {
-        alert("Claim updated successfully! 🎉");
-      } else {
-        alert("Claim saved successfully! 🎉");
-      }
+      alert(
+        editingClaimId
+          ? "Claim updated successfully! 🎉"
+          : "Claim saved successfully! 🎉"
+      );
 
       setEditingClaimId(null);
 
@@ -302,8 +305,12 @@ function App() {
 
       alert(
         editingClaimId
-          ? "Failed to update claim."
-          : "Failed to save claim."
+          ? `Failed to update claim: ${
+              error.message || ""
+            }`
+          : `Failed to save claim: ${
+              error.message || ""
+            }`
       );
     } finally {
       setSaving(false);
@@ -330,14 +337,18 @@ function App() {
         );
       }
 
-      setClaims(result.data);
+      setClaims(result.data || []);
     } catch (error) {
       console.error(
         "Fetch claims error:",
         error
       );
 
-      alert("Failed to load saved claims.");
+      alert(
+        `Failed to load saved claims: ${
+          error.message || ""
+        }`
+      );
     } finally {
       setClaimsLoading(false);
     }
@@ -365,10 +376,8 @@ function App() {
 
       const savedClaim = result.data;
 
-      // Load original claim text
       setClaim(savedClaim.claimText || "");
 
-      // Load extracted form data
       setForm({
         incidentType:
           savedClaim.extractedData
@@ -399,16 +408,13 @@ function App() {
             ?.animalDetails || "",
       });
 
-      // Store currently editing claim ID
       setEditingClaimId(savedClaim._id);
 
-      // Reset completeness + summary
       setMissingFields([]);
       setClaimComplete(null);
       setReadinessScore(null);
       setSummary("");
 
-      // Scroll to top
       window.scrollTo({
         top: 0,
         behavior: "smooth",
@@ -419,7 +425,11 @@ function App() {
         error
       );
 
-      alert("Failed to open claim.");
+      alert(
+        `Failed to open claim: ${
+          error.message || ""
+        }`
+      );
     } finally {
       setEditLoading(false);
     }
@@ -455,17 +465,14 @@ function App() {
   // =========================
 
   const handleChange = (fieldName, value) => {
-    setForm({
-      ...form,
+    setForm((prev) => ({
+      ...prev,
       [fieldName]: value,
-    });
+    }));
 
-    // Clear previous completeness result
     setClaimComplete(null);
     setMissingFields([]);
     setReadinessScore(null);
-
-    // Summary is based on old form data
     setSummary("");
   };
 
@@ -520,7 +527,6 @@ function App() {
         <h2>📋 Claim Form</h2>
 
         {formFields.map((field) => {
-          // Conditional field logic
           if (
             field.showIf &&
             form[field.showIf.field] !==
@@ -617,7 +623,9 @@ function App() {
               border: "1px solid #8b5cf6",
             }}
           >
-            <h3>📊 Claim Readiness Score</h3>
+            <h3>
+              📊 Claim Readiness Score
+            </h3>
 
             <div
               style={{
@@ -634,7 +642,8 @@ function App() {
                   width: `${readinessScore}%`,
                   height: "100%",
                   backgroundColor: "#7c3aed",
-                  transition: "width 0.4s ease",
+                  transition:
+                    "width 0.4s ease",
                 }}
               />
             </div>
@@ -672,7 +681,9 @@ function App() {
               border: "1px solid #cbd5e1",
             }}
           >
-            <h3>📝 AI-Generated Claim Summary</h3>
+            <h3>
+              📝 AI-Generated Claim Summary
+            </h3>
 
             <p
               style={{

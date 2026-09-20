@@ -20,17 +20,24 @@ function App() {
   const [claims, setClaims] = useState([]);
   const [claimsLoading, setClaimsLoading] = useState(false);
 
-  const [editingClaimId, setEditingClaimId] = useState(null);
-  const [editLoading, setEditLoading] = useState(false);
+  const [editingClaimId, setEditingClaimId] =
+    useState(null);
+  const [editLoading, setEditLoading] =
+    useState(false);
 
-  const [missingFields, setMissingFields] = useState([]);
-  const [checkingMissing, setCheckingMissing] = useState(false);
-  const [claimComplete, setClaimComplete] = useState(null);
+  const [missingFields, setMissingFields] =
+    useState([]);
+  const [checkingMissing, setCheckingMissing] =
+    useState(false);
+  const [claimComplete, setClaimComplete] =
+    useState(null);
 
-  const [readinessScore, setReadinessScore] = useState(null);
+  const [readinessScore, setReadinessScore] =
+    useState(null);
 
   const [summary, setSummary] = useState("");
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryLoading, setSummaryLoading] =
+    useState(false);
 
   // =========================
   // Dynamic Form Schema
@@ -481,7 +488,7 @@ function App() {
       <h1>Forma AI 🤖</h1>
 
       <p>
-        AI-powered dynamic insurance claim form
+        AI-powered dynamic insurance claim assistant
       </p>
 
       {/* =========================

@@ -39,9 +39,7 @@ function App() {
   const [summaryLoading, setSummaryLoading] =
     useState(false);
 
-  // =========================
-  // Dynamic Form Schema
-  // =========================
+  
 
   const formFields = [
     {
@@ -89,9 +87,7 @@ function App() {
     },
   ];
 
-  // =========================
-  // AI Extraction
-  // =========================
+  
 
   const extractClaim = async () => {
     if (!claim.trim()) {
@@ -145,9 +141,7 @@ function App() {
     }
   };
 
-  // =========================
-  // Check Missing Fields
-  // =========================
+  
 
   const checkMissingFields = async () => {
     try {

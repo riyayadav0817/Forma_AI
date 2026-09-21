@@ -1,812 +1,555 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { api } from "./api";
+import { ToastProvider, useToast } from "./components/Toast";
+import ProgressRing from "./components/ProgressRing";
+import EvidenceUploader from "./components/EvidenceUploader";
+import ClaimsDashboard from "./components/ClaimsDashboard";
+import {
+  SparklesIcon,
+  FormIcon,
+  CheckCircleIcon,
+  AlertIcon,
+  GaugeIcon,
+  CopyIcon,
+  LoaderIcon,
+  ChevronRightIcon,
+} from "./components/Icons";
 
-function App() {
+const EMPTY_FORM = {
+  incidentType: "",
+  vehicle: "",
+  location: "",
+  damage: "",
+  date: "",
+  policeReportNumber: "",
+  animalDetails: "",
+};
+
+const FORM_FIELDS = [
+  { name: "incidentType", label: "Incident Type", placeholder: "e.g. Accident" },
+  { name: "vehicle", label: "Vehicle", placeholder: "e.g. Honda City" },
+  { name: "location", label: "Location", placeholder: "e.g. I-95" },
+  { name: "date", label: "Incident Date", placeholder: "e.g. Yesterday" },
+  { name: "damage", label: "Damage", placeholder: "e.g. Windshield damaged", wide: true },
+  {
+    name: "policeReportNumber",
+    label: "Police Report Number",
+    placeholder: "e.g. PR-2026-00451",
+    showIf: { field: "incidentType", equals: "Theft" },
+  },
+  {
+    name: "animalDetails",
+    label: "Animal Details",
+    placeholder: "e.g. Full-grown deer, ran off after impact",
+    showIf: { field: "incidentType", equals: "Animal Collision" },
+  },
+];
+
+const EXAMPLES = [
+  {
+    label: "🦌 Animal collision",
+    text: "I hit a deer on I-95 yesterday in my Honda, and the windshield shattered.",
+  },
+  {
+    label: "🚗 Accident",
+    text: "I was in an accident today near a parking lot — my Toyota's bumper and door are damaged.",
+  },
+  {
+    label: "🔓 Theft",
+    text: "My BMW was stolen last night from the parking lot outside my apartment.",
+  },
+];
+
+function AppContent() {
+  const toast = useToast();
+
+  const [activeTab, setActiveTab] = useState("new");
+
   const [claim, setClaim] = useState("");
-
-  const [form, setForm] = useState({
-    incidentType: "",
-    vehicle: "",
-    location: "",
-    damage: "",
-    date: "",
-    policeReportNumber: "",
-    animalDetails: "",
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [extractionSource, setExtractionSource] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [claims, setClaims] = useState([]);
   const [claimsLoading, setClaimsLoading] = useState(false);
+  const [claimsLoaded, setClaimsLoaded] = useState(false);
 
-  const [editingClaimId, setEditingClaimId] =
-    useState(null);
-  const [editLoading, setEditLoading] =
-    useState(false);
+  const [editingClaimId, setEditingClaimId] = useState(null);
+  const [editLoadingId, setEditLoadingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [evidence, setEvidence] = useState([]);
 
-  const [missingFields, setMissingFields] =
-    useState([]);
-  const [checkingMissing, setCheckingMissing] =
-    useState(false);
-  const [claimComplete, setClaimComplete] =
-    useState(null);
-
-  const [readinessScore, setReadinessScore] =
-    useState(null);
+  const [missingFields, setMissingFields] = useState([]);
+  const [checkingMissing, setCheckingMissing] = useState(false);
+  const [claimComplete, setClaimComplete] = useState(null);
+  const [readinessScore, setReadinessScore] = useState(null);
 
   const [summary, setSummary] = useState("");
-  const [summaryLoading, setSummaryLoading] =
-    useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
-  
+  // Load the saved-claims list once, lazily, the first time it's needed.
+  useEffect(() => {
+    if (activeTab === "saved" && !claimsLoaded) {
+      loadClaims();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
-  const formFields = [
-    {
-      name: "incidentType",
-      label: "Incident Type",
-      type: "text",
-    },
-    {
-      name: "vehicle",
-      label: "Vehicle",
-      type: "text",
-    },
-    {
-      name: "location",
-      label: "Location",
-      type: "text",
-    },
-    {
-      name: "damage",
-      label: "Damage",
-      type: "text",
-    },
-    {
-      name: "date",
-      label: "Date",
-      type: "text",
-    },
-    {
-      name: "policeReportNumber",
-      label: "Police Report Number",
-      type: "text",
-      showIf: {
-        field: "incidentType",
-        equals: "Theft",
-      },
-    },
-    {
-      name: "animalDetails",
-      label: "Animal Details",
-      type: "text",
-      showIf: {
-        field: "incidentType",
-        equals: "Animal Collision",
-      },
-    },
-  ];
-
-  
+  const resetResults = () => {
+    setMissingFields([]);
+    setClaimComplete(null);
+    setReadinessScore(null);
+    setSummary("");
+  };
 
   const extractClaim = async () => {
     if (!claim.trim()) {
-      alert("Please describe your claim first.");
+      toast.error("Please describe your claim first.");
       return;
     }
 
     try {
       setLoading(true);
-
-      const response = await fetch(
-        "http://localhost:5000/api/ai/extract",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            claim,
-          }),
-        }
+      const result = await api.extractClaim(claim);
+      setForm((prev) => ({ ...prev, ...result.data }));
+      setExtractionSource(result.source || null);
+      resetResults();
+      toast.success(
+        result.source === "ai"
+          ? "Claim parsed with AI."
+          : "Claim parsed — form pre-filled."
       );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "AI extraction failed"
-        );
-      }
-
-      setForm((prev) => ({
-        ...prev,
-        ...result.data,
-      }));
-
-      setMissingFields([]);
-      setClaimComplete(null);
-      setReadinessScore(null);
-      setSummary("");
     } catch (error) {
-      console.error("Extraction error:", error);
-
-      alert(
-        `Extraction failed: ${
-          error.message || "Please check the backend."
-        }`
-      );
+      toast.error(error.message || "Extraction failed. Check the backend.");
     } finally {
       setLoading(false);
     }
   };
 
-  
-
   const checkMissingFields = async () => {
     try {
       setCheckingMissing(true);
-
-      const response = await fetch(
-        "http://localhost:5000/api/claims/check-missing",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            extractedData: form,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            "Failed to check missing fields"
-        );
-      }
-
-      setMissingFields(
-        result.missingFields || []
-      );
-
-      setClaimComplete(
-        result.complete ?? false
-      );
-
-      setReadinessScore(
-        result.readinessScore ?? null
-      );
+      const result = await api.checkMissingFields(form);
+      setMissingFields(result.missingFields || []);
+      setClaimComplete(result.complete ?? false);
+      setReadinessScore(result.readinessScore ?? null);
     } catch (error) {
-      console.error(
-        "Missing field check error:",
-        error
-      );
-
-      alert(
-        `Failed to check missing information: ${
-          error.message || ""
-        }`
-      );
+      toast.error(error.message || "Failed to check missing information.");
     } finally {
       setCheckingMissing(false);
     }
   };
 
-  // =========================
-  // Generate AI Claim Summary
-  // =========================
-
   const generateSummary = async () => {
     if (!claim.trim()) {
-      alert("Please describe your claim first.");
+      toast.error("Please describe your claim first.");
       return;
     }
 
     try {
       setSummaryLoading(true);
-
-      const response = await fetch(
-        "http://localhost:5000/api/claims/generate-summary",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            claimText: claim,
-            extractedData: form,
-          }),
-        }
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error ||
-            "Failed to generate claim summary"
-        );
-      }
-
+      const result = await api.generateSummary(claim, form);
       setSummary(result.summary || "");
     } catch (error) {
-      console.error(
-        "Generate summary error:",
-        error
-      );
-
-      alert(
-        `Failed to generate claim summary: ${
-          error.message || ""
-        }`
-      );
+      toast.error(error.message || "Failed to generate claim summary.");
     } finally {
       setSummaryLoading(false);
     }
   };
 
-  // =========================
-  // Save / Update Claim
-  // =========================
-
   const saveClaim = async () => {
     if (!claim.trim()) {
-      alert("Please describe your claim first.");
+      toast.error("Please describe your claim first.");
       return;
     }
 
     try {
       setSaving(true);
+      const result = await api.saveClaim(claim, form, editingClaimId);
 
-      const url = editingClaimId
-        ? `http://localhost:5000/api/claims/${editingClaimId}`
-        : "http://localhost:5000/api/claims";
+      toast.success(editingClaimId ? "Claim updated." : "Claim saved.");
 
-      const method = editingClaimId
-        ? "PUT"
-        : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          claimText: claim,
-          extractedData: form,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to save claim"
-        );
-      }
-
-      alert(
-        editingClaimId
-          ? "Claim updated successfully! 🎉"
-          : "Claim saved successfully! 🎉"
-      );
-
-      setEditingClaimId(null);
-
-      await fetchClaims();
+      setEditingClaimId(result.data._id);
+      setEvidence(result.data.evidence || []);
+      setClaimsLoaded(false);
     } catch (error) {
-      console.error(
-        "Save claim error:",
-        error
-      );
-
-      alert(
-        editingClaimId
-          ? `Failed to update claim: ${
-              error.message || ""
-            }`
-          : `Failed to save claim: ${
-              error.message || ""
-            }`
+      toast.error(
+        error.message ||
+          (editingClaimId ? "Failed to update claim." : "Failed to save claim.")
       );
     } finally {
       setSaving(false);
     }
   };
 
-  // =========================
-  // Fetch All Saved Claims
-  // =========================
-
-  const fetchClaims = async () => {
+  const loadClaims = async () => {
     try {
       setClaimsLoading(true);
-
-      const response = await fetch(
-        "http://localhost:5000/api/claims"
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to fetch claims"
-        );
-      }
-
+      const result = await api.fetchClaims();
       setClaims(result.data || []);
+      setClaimsLoaded(true);
     } catch (error) {
-      console.error(
-        "Fetch claims error:",
-        error
-      );
-
-      alert(
-        `Failed to load saved claims: ${
-          error.message || ""
-        }`
-      );
+      toast.error(error.message || "Failed to load saved claims.");
     } finally {
       setClaimsLoading(false);
     }
   };
 
-  // =========================
-  // Open / Resume Claim
-  // =========================
-
   const openClaim = async (id) => {
     try {
-      setEditLoading(true);
-
-      const response = await fetch(
-        `http://localhost:5000/api/claims/${id}`
-      );
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          result.error || "Failed to open claim"
-        );
-      }
-
+      setEditLoadingId(id);
+      const result = await api.fetchClaim(id);
       const savedClaim = result.data;
 
       setClaim(savedClaim.claimText || "");
-
-      setForm({
-        incidentType:
-          savedClaim.extractedData
-            ?.incidentType || "",
-
-        vehicle:
-          savedClaim.extractedData
-            ?.vehicle || "",
-
-        location:
-          savedClaim.extractedData
-            ?.location || "",
-
-        damage:
-          savedClaim.extractedData
-            ?.damage || "",
-
-        date:
-          savedClaim.extractedData
-            ?.date || "",
-
-        policeReportNumber:
-          savedClaim.extractedData
-            ?.policeReportNumber || "",
-
-        animalDetails:
-          savedClaim.extractedData
-            ?.animalDetails || "",
-      });
-
+      setForm({ ...EMPTY_FORM, ...savedClaim.extractedData });
       setEditingClaimId(savedClaim._id);
+      setEvidence(savedClaim.evidence || []);
+      setExtractionSource(null);
+      resetResults();
+      setActiveTab("new");
 
-      setMissingFields([]);
-      setClaimComplete(null);
-      setReadinessScore(null);
-      setSummary("");
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error(
-        "Open claim error:",
-        error
-      );
-
-      alert(
-        `Failed to open claim: ${
-          error.message || ""
-        }`
-      );
+      toast.error(error.message || "Failed to open claim.");
     } finally {
-      setEditLoading(false);
+      setEditLoadingId(null);
     }
   };
 
-  // =========================
-  // Cancel Editing
-  // =========================
+  const deleteClaim = async (id) => {
+    if (!window.confirm("Delete this claim? This can't be undone.")) return;
+
+    try {
+      setDeletingId(id);
+      await api.deleteClaim(id);
+      setClaims((prev) => prev.filter((c) => c._id !== id));
+      toast.success("Claim deleted.");
+
+      if (editingClaimId === id) cancelEditing();
+    } catch (error) {
+      toast.error(error.message || "Failed to delete claim.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const cancelEditing = () => {
     setEditingClaimId(null);
-
     setClaim("");
-
-    setForm({
-      incidentType: "",
-      vehicle: "",
-      location: "",
-      damage: "",
-      date: "",
-      policeReportNumber: "",
-      animalDetails: "",
-    });
-
-    setMissingFields([]);
-    setClaimComplete(null);
-    setReadinessScore(null);
-    setSummary("");
+    setForm(EMPTY_FORM);
+    setEvidence([]);
+    setExtractionSource(null);
+    resetResults();
   };
-
-  // =========================
-  // Handle Manual Field Changes
-  // =========================
 
   const handleChange = (fieldName, value) => {
-    setForm((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }));
-
-    setClaimComplete(null);
-    setMissingFields([]);
-    setReadinessScore(null);
-    setSummary("");
+    setForm((prev) => ({ ...prev, [fieldName]: value }));
+    resetResults();
   };
 
+  const copySummary = async () => {
+    try {
+      await navigator.clipboard.writeText(summary);
+      toast.success("Summary copied to clipboard.");
+    } catch {
+      toast.error("Couldn't copy — please select and copy manually.");
+    }
+  };
+
+  const stats = useMemo(() => {
+    if (claims.length === 0) return null;
+    const withVehicle = claims.filter((c) => c.extractedData?.vehicle).length;
+    return { total: claims.length, withVehicle };
+  }, [claims]);
+
   return (
-    <div className="container">
-      <h1>Forma AI 🤖</h1>
-
-      <p>
-        AI-powered dynamic insurance claim assistant
-      </p>
-
-      {/* =========================
-          Magic Input
-      ========================= */}
-
-      <section className="card">
-        <h2>✨ Magic Input</h2>
-
-        {editingClaimId && (
-          <p>
-            ✏️ You are editing a saved claim.
-          </p>
-        )}
-
-        <textarea
-          placeholder="Describe your insurance claim..."
-          value={claim}
-          onChange={(e) => {
-            setClaim(e.target.value);
-            setSummary("");
-            setClaimComplete(null);
-            setMissingFields([]);
-            setReadinessScore(null);
-          }}
-        />
-
-        <button
-          onClick={extractClaim}
-          disabled={loading}
-        >
-          {loading
-            ? "Extracting..."
-            : "Extract Information"}
-        </button>
-      </section>
-
-      {/* =========================
-          Dynamic Claim Form
-      ========================= */}
-
-      <section className="card">
-        <h2>📋 Claim Form</h2>
-
-        {formFields.map((field) => {
-          if (
-            field.showIf &&
-            form[field.showIf.field] !==
-              field.showIf.equals
-          ) {
-            return null;
-          }
-
-          return (
-            <div key={field.name}>
-              <label>{field.label}</label>
-
-              <input
-                type={field.type}
-                value={form[field.name] || ""}
-                onChange={(e) =>
-                  handleChange(
-                    field.name,
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-          );
-        })}
-
-        {/* =========================
-            Smart Completeness Check
-        ========================= */}
-
-        <button
-          onClick={checkMissingFields}
-          disabled={checkingMissing}
-          type="button"
-        >
-          {checkingMissing
-            ? "Checking..."
-            : "🧠 Check Claim Completeness"}
-        </button>
-
-        {claimComplete !== null && (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "16px",
-              borderRadius: "12px",
-              backgroundColor: claimComplete
-                ? "#ecfdf5"
-                : "#fff7ed",
-              border: claimComplete
-                ? "1px solid #10b981"
-                : "1px solid #f59e0b",
-            }}
-          >
-            <h3>
-              {claimComplete
-                ? "✅ Claim Information Complete"
-                : "⚠️ Missing Information"}
-            </h3>
-
-            {!claimComplete && (
-              <>
-                <p>
-                  Please provide the following
-                  information:
-                </p>
-
-                <ul>
-                  {missingFields.map((item) => (
-                    <li key={item.field}>
-                      <strong>
-                        {item.label}:
-                      </strong>{" "}
-                      {item.message}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="topbar__brand">
+          <span className="logo-mark">FA</span>
+          <div>
+            <h1>Forma AI</h1>
+            <p>AI-augmented dynamic insurance claim assistant</p>
           </div>
-        )}
+        </div>
 
-        {/* =========================
-            Claim Readiness Score
-        ========================= */}
-
-        {readinessScore !== null && (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "18px",
-              borderRadius: "12px",
-              backgroundColor: "#f5f3ff",
-              border: "1px solid #8b5cf6",
-            }}
+        <nav className="tabs">
+          <button
+            className={`tab ${activeTab === "new" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("new")}
           >
-            <h3>
-              📊 Claim Readiness Score
-            </h3>
+            <FormIcon width={16} height={16} />
+            New Claim
+          </button>
+          <button
+            className={`tab ${activeTab === "saved" ? "is-active" : ""}`}
+            onClick={() => setActiveTab("saved")}
+          >
+            <SparklesIcon width={16} height={16} />
+            Saved Claims
+            {stats && <span className="tab__count">{stats.total}</span>}
+          </button>
+        </nav>
+      </header>
 
-            <div
-              style={{
-                width: "100%",
-                height: "12px",
-                backgroundColor: "#e5e7eb",
-                borderRadius: "999px",
-                overflow: "hidden",
-                marginTop: "10px",
-              }}
-            >
-              <div
-                style={{
-                  width: `${readinessScore}%`,
-                  height: "100%",
-                  backgroundColor: "#7c3aed",
-                  transition:
-                    "width 0.4s ease",
+      <main className="container">
+        {activeTab === "new" ? (
+          <>
+            {/* Magic Input */}
+            <section className="card">
+              <div className="card__header">
+                <h2>
+                  <SparklesIcon /> Magic Input
+                </h2>
+                {editingClaimId && (
+                  <span className="pill pill--info">Editing saved claim</span>
+                )}
+              </div>
+
+              <p className="card__hint">
+                Describe what happened in your own words — Forma AI pre-fills the
+                structured form below for you.
+              </p>
+
+              <textarea
+                placeholder="e.g. I hit a deer on I-95 yesterday in my Honda, and the windshield shattered."
+                value={claim}
+                onChange={(e) => {
+                  setClaim(e.target.value);
+                  setExtractionSource(null);
+                  resetResults();
                 }}
               />
-            </div>
 
-            <p>
-              <strong>
-                {readinessScore}%
-              </strong>{" "}
-              claim information completed.
-            </p>
-          </div>
-        )}
+              <div className="chip-row">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex.label}
+                    type="button"
+                    className="chip"
+                    onClick={() => setClaim(ex.text)}
+                  >
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
 
-        {/* =========================
-            AI Claim Summary
-        ========================= */}
+              <div className="card__footer">
+                <button
+                  className="btn btn--primary"
+                  onClick={extractClaim}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <LoaderIcon /> Extracting…
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon width={16} height={16} /> Extract Information
+                    </>
+                  )}
+                </button>
 
-        <button
-          onClick={generateSummary}
-          disabled={summaryLoading}
-          type="button"
-        >
-          {summaryLoading
-            ? "Generating Summary..."
-            : "✨ Generate AI Claim Summary"}
-        </button>
+                {extractionSource && (
+                  <span className={`pill pill--${extractionSource === "ai" ? "violet" : "slate"}`}>
+                    {extractionSource === "ai" ? "Parsed with AI" : "Parsed with rules engine"}
+                  </span>
+                )}
+              </div>
+            </section>
 
-        {summary && (
-          <div
-            style={{
-              marginTop: "20px",
-              padding: "20px",
-              borderRadius: "12px",
-              backgroundColor: "#f8fafc",
-              border: "1px solid #cbd5e1",
-            }}
-          >
-            <h3>
-              📝 AI-Generated Claim Summary
-            </h3>
+            {/* Dynamic Claim Form */}
+            <section className="card">
+              <div className="card__header">
+                <h2>
+                  <FormIcon /> Claim Form
+                </h2>
+              </div>
 
-            <p
-              style={{
-                lineHeight: "1.7",
-                marginTop: "12px",
-              }}
-            >
-              {summary}
-            </p>
-          </div>
-        )}
+              <div className="form-grid">
+                {FORM_FIELDS.map((field) => {
+                  if (
+                    field.showIf &&
+                    form[field.showIf.field] !== field.showIf.equals
+                  ) {
+                    return null;
+                  }
 
-        {/* =========================
-            Save / Update
-        ========================= */}
+                  const flagged = missingFields.some((m) => m.field === field.name);
 
-        <button
-          onClick={saveClaim}
-          disabled={saving}
-        >
-          {saving
-            ? "Saving..."
-            : editingClaimId
-            ? "💾 Update Claim"
-            : "💾 Save Claim"}
-        </button>
+                  return (
+                    <div
+                      key={field.name}
+                      className={`field ${field.wide ? "field--wide" : ""} ${
+                        flagged ? "field--flagged" : ""
+                      }`}
+                    >
+                      <label>{field.label}</label>
+                      <input
+                        type="text"
+                        placeholder={field.placeholder}
+                        value={form[field.name] || ""}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
 
-        {editingClaimId && (
-          <button
-            onClick={cancelEditing}
-            type="button"
-          >
-            ❌ Cancel Editing
-          </button>
-        )}
-      </section>
+              <div className="action-row">
+                <button
+                  className="btn btn--secondary"
+                  onClick={checkMissingFields}
+                  disabled={checkingMissing}
+                  type="button"
+                >
+                  {checkingMissing ? (
+                    <>
+                      <LoaderIcon /> Checking…
+                    </>
+                  ) : (
+                    <>
+                      <GaugeIcon width={16} height={16} /> Check Completeness
+                    </>
+                  )}
+                </button>
 
-      {/* =========================
-          Saved Claims Dashboard
-      ========================= */}
+                <button
+                  className="btn btn--secondary"
+                  onClick={generateSummary}
+                  disabled={summaryLoading}
+                  type="button"
+                >
+                  {summaryLoading ? (
+                    <>
+                      <LoaderIcon /> Generating…
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon width={16} height={16} /> AI Claim Summary
+                    </>
+                  )}
+                </button>
+              </div>
 
-      <section className="card">
-        <h2>📂 Saved Claims</h2>
+              {/* Readiness + Missing fields */}
+              {readinessScore !== null && (
+                <div className="result-panel result-panel--readiness">
+                  <ProgressRing value={readinessScore} />
 
-        <button
-          onClick={fetchClaims}
-          disabled={claimsLoading}
-        >
-          {claimsLoading
-            ? "Loading..."
-            : "🔄 Load Claims"}
-        </button>
+                  <div className="result-panel__body">
+                    <h3>
+                      {claimComplete ? (
+                        <>
+                          <CheckCircleIcon width={18} height={18} /> Claim
+                          information complete
+                        </>
+                      ) : (
+                        <>
+                          <AlertIcon width={18} height={18} /> Missing information
+                        </>
+                      )}
+                    </h3>
 
-        {claims.length === 0 &&
-        !claimsLoading ? (
-          <p>No saved claims yet.</p>
+                    {!claimComplete && missingFields.length > 0 && (
+                      <ul className="missing-list">
+                        {missingFields.map((item) => (
+                          <li key={item.field}>
+                            <ChevronRightIcon width={14} height={14} />
+                            <div>
+                              <strong>{item.label}</strong>
+                              <span>{item.message}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Summary */}
+              {summary && (
+                <div className="result-panel result-panel--summary">
+                  <div className="result-panel__header">
+                    <h3>
+                      <SparklesIcon width={17} height={17} /> AI-Generated Claim
+                      Summary
+                    </h3>
+                    <button className="icon-btn" onClick={copySummary} title="Copy summary">
+                      <CopyIcon width={15} height={15} />
+                    </button>
+                  </div>
+                  <p>{summary}</p>
+                </div>
+              )}
+
+              {/* Evidence upload — only once a claim exists to attach files to */}
+              {editingClaimId ? (
+                <div className="section-divider">
+                  <h3 className="section-title">Evidence</h3>
+                  <EvidenceUploader
+                    claimId={editingClaimId}
+                    evidence={evidence}
+                    onUploaded={setEvidence}
+                  />
+                </div>
+              ) : (
+                <p className="hint-note">
+                  💡 Save the claim first to attach photos or a police report as
+                  evidence.
+                </p>
+              )}
+
+              <div className="card__footer">
+                <button className="btn btn--primary" onClick={saveClaim} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <LoaderIcon /> Saving…
+                    </>
+                  ) : editingClaimId ? (
+                    "💾 Update Claim"
+                  ) : (
+                    "💾 Save Claim"
+                  )}
+                </button>
+
+                {editingClaimId && (
+                  <button
+                    className="btn btn--ghost"
+                    onClick={cancelEditing}
+                    type="button"
+                  >
+                    Cancel Editing
+                  </button>
+                )}
+              </div>
+            </section>
+          </>
         ) : (
-          claims.map((savedClaim) => (
-            <div
-              key={savedClaim._id}
-              style={{
-                marginTop: "20px",
-                padding: "18px",
-                border: "1px solid #e5e7eb",
-                borderRadius: "12px",
-              }}
-            >
-              <h3>
-                {savedClaim.extractedData
-                  ?.incidentType ||
-                  "Insurance Claim"}
-              </h3>
-
-              <p>
-                {savedClaim.claimText}
-              </p>
-
-              <p>
-                <strong>Vehicle:</strong>{" "}
-                {savedClaim.extractedData
-                  ?.vehicle || "N/A"}
-              </p>
-
-              <p>
-                <strong>Location:</strong>{" "}
-                {savedClaim.extractedData
-                  ?.location || "N/A"}
-              </p>
-
-              <p>
-                <strong>Date:</strong>{" "}
-                {savedClaim.extractedData
-                  ?.date || "N/A"}
-              </p>
-
-              <p>
-                <strong>Damage:</strong>{" "}
-                {savedClaim.extractedData
-                  ?.damage || "N/A"}
-              </p>
-
-              <p>
-                <strong>Claim ID:</strong>{" "}
-                {savedClaim._id}
-              </p>
-
-              <button
-                onClick={() =>
-                  openClaim(savedClaim._id)
-                }
-                disabled={editLoading}
-              >
-                {editLoading
-                  ? "Opening..."
-                  : "✏️ Open & Edit"}
-              </button>
-            </div>
-          ))
+          <ClaimsDashboard
+            claims={claims}
+            loading={claimsLoading}
+            editLoadingId={editLoadingId}
+            deletingId={deletingId}
+            onOpen={openClaim}
+            onDelete={deleteClaim}
+          />
         )}
-      </section>
+      </main>
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppContent />
+    </ToastProvider>
+  );
+}

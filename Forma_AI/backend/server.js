@@ -8,6 +8,7 @@ const fs = require("fs");
 require("dotenv").config();
 
 const Claim = require("./models/Claim");
+const { extractClaimData } = require("./services/extraction");
 
 const app = express();
 
@@ -106,6 +107,9 @@ app.get("/api/health", (req, res) => {
       mongoose.connection.readyState === 1
         ? "connected"
         : "disconnected",
+    extractionMode: process.env.OPENAI_API_KEY
+      ? "ai"
+      : "rules",
   });
 });
 
@@ -127,124 +131,12 @@ app.post("/api/ai/extract", async (req, res) => {
       });
     }
 
-    const text = claim.toLowerCase();
-
-    let incidentType = "";
-    let vehicle = "";
-    let location = "";
-    let damage = "";
-    let date = "";
-
-    /* =========================
-       Incident Type Detection
-    ========================= */
-
-    if (
-      text.includes("deer") ||
-      text.includes("animal") ||
-      text.includes("dog") ||
-      text.includes("cow")
-    ) {
-      incidentType = "Animal Collision";
-    } else if (
-      text.includes("stolen") ||
-      text.includes("theft") ||
-      text.includes("robbed")
-    ) {
-      incidentType = "Theft";
-    } else if (
-      text.includes("accident") ||
-      text.includes("crash") ||
-      text.includes("collision")
-    ) {
-      incidentType = "Accident";
-    }
-
-    /* =========================
-       Vehicle Detection
-    ========================= */
-
-    if (text.includes("honda")) {
-      vehicle = "Honda";
-    } else if (text.includes("toyota")) {
-      vehicle = "Toyota";
-    } else if (text.includes("bmw")) {
-      vehicle = "BMW";
-    } else if (text.includes("ford")) {
-      vehicle = "Ford";
-    }
-
-    /* =========================
-       Location Detection
-    ========================= */
-
-    const locationMatch = claim.match(
-      /\b(I-\d+|NH-\d+|Highway|parking lot|parking area)\b/i
-    );
-
-    if (locationMatch) {
-      location = locationMatch[0];
-    }
-
-    /* =========================
-       Damage Detection
-    ========================= */
-
-    const damageWords = [];
-
-    if (text.includes("windshield")) {
-      damageWords.push("Windshield damaged");
-    }
-
-    if (text.includes("bumper")) {
-      damageWords.push("Bumper damaged");
-    }
-
-    if (text.includes("door")) {
-      damageWords.push("Door damaged");
-    }
-
-    if (text.includes("glass")) {
-      damageWords.push("Glass damaged");
-    }
-
-    if (text.includes("broken")) {
-      damageWords.push("Vehicle part broken");
-    }
-
-    if (text.includes("shattered")) {
-      damageWords.push(
-        "Vehicle glass shattered"
-      );
-    }
-
-    damage = damageWords.join(", ");
-
-    /* =========================
-       Date Detection
-    ========================= */
-
-    if (text.includes("yesterday")) {
-      date = "Yesterday";
-    } else if (text.includes("today")) {
-      date = "Today";
-    } else if (text.includes("last night")) {
-      date = "Last night";
-    }
-
-    /* =========================
-       Response
-    ========================= */
+    const { data, source } = await extractClaimData(claim.trim());
 
     return res.json({
       success: true,
-      data: {
-        incidentType,
-        vehicle,
-        location,
-        damage,
-        date,
-      },
+      data,
+      source, // "ai" if the LLM parsed it, "rules" if we fell back
     });
   } catch (error) {
     console.error(
@@ -447,6 +339,55 @@ app.put(
       return res.status(500).json({
         success: false,
         error: "Failed to update claim",
+      });
+    }
+  }
+);
+
+/* =========================
+   Delete Claim
+========================= */
+
+app.delete(
+  "/api/claims/:id",
+  async (req, res) => {
+    try {
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          req.params.id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid claim ID",
+        });
+      }
+
+      const deletedClaim =
+        await Claim.findByIdAndDelete(
+          req.params.id
+        );
+
+      if (!deletedClaim) {
+        return res.status(404).json({
+          success: false,
+          error: "Claim not found",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Claim deleted successfully",
+      });
+    } catch (error) {
+      console.error(
+        "Delete claim error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to delete claim",
       });
     }
   }

@@ -553,3 +553,9 @@ export default function App() {
     </ToastProvider>
   );
 }
+const handleLogout = () => {
+  localStorage.removeItem("forma_token");
+  localStorage.removeItem("forma_user");
+
+  window.location.reload();
+};

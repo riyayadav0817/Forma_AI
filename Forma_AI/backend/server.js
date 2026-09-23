@@ -10,25 +10,37 @@ require("dotenv").config();
 const Claim = require("./models/Claim");
 const { extractClaimData } = require("./services/extraction");
 
-const app = express();
+const authRoutes = require("./routes/auth");
+const { protect } = require("./middleware/auth");
 
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-/* =========================
-   Middleware
-========================= */
+/* =========================================================
+   MIDDLEWARE
+========================================================= */
 
-app.use(cors());
-app.use(express.json());
-
-/* =========================
-   Evidence Upload Setup
-========================= */
-
-const uploadDirectory = path.join(
-  __dirname,
-  "uploads"
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+  })
 );
+
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+/* =========================================================
+   AUTH ROUTES
+========================================================= */
+
+app.use("/api/auth", authRoutes);
+
+/* =========================================================
+   UPLOAD DIRECTORY
+========================================================= */
+
+const uploadDirectory = path.join(__dirname, "uploads");
 
 if (!fs.existsSync(uploadDirectory)) {
   fs.mkdirSync(uploadDirectory, {
@@ -36,18 +48,23 @@ if (!fs.existsSync(uploadDirectory)) {
   });
 }
 
+/* =========================================================
+   MULTER
+========================================================= */
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDirectory);
   },
 
   filename: (req, file, cb) => {
-    const uniqueName =
-      `${Date.now()}-${Math.round(
-        Math.random() * 1e9
-      )}` + path.extname(file.originalname);
+    const extension = path.extname(file.originalname);
 
-    cb(null, uniqueName);
+    const filename =
+      `${Date.now()}-${Math.round(Math.random() * 1e9)}` +
+      extension;
+
+    cb(null, filename);
   },
 });
 
@@ -78,18 +95,18 @@ const upload = multer({
   },
 });
 
-/* =========================
-   Serve Uploaded Files
-========================= */
+/* =========================================================
+   STATIC UPLOADS
+========================================================= */
 
 app.use(
   "/uploads",
   express.static(uploadDirectory)
 );
 
-/* =========================
-   Basic Routes
-========================= */
+/* =========================================================
+   BASIC ROUTES
+========================================================= */
 
 app.get("/", (req, res) => {
   res.json({
@@ -103,131 +120,163 @@ app.get("/api/health", (req, res) => {
     success: true,
     status: "OK",
     project: "Forma AI",
+
     database:
       mongoose.connection.readyState === 1
         ? "connected"
         : "disconnected",
-    extractionMode: process.env.OPENAI_API_KEY
-      ? "ai"
-      : "rules",
+
+    extractionMode:
+      process.env.OPENAI_API_KEY
+        ? "ai"
+        : "rules",
   });
 });
 
-/* =========================
-   Mock AI Extraction
-========================= */
+/* =========================================================
+   EXTRACT CLAIM
+   POST /api/claims/extract
+========================================================= */
 
-app.post("/api/ai/extract", async (req, res) => {
-  try {
-    const { claim } = req.body;
+app.post(
+  "/api/claims/extract",
+  protect,
+  async (req, res) => {
+    try {
+      const { claim } = req.body;
 
-    if (
-      typeof claim !== "string" ||
-      !claim.trim()
-    ) {
-      return res.status(400).json({
+      if (
+        typeof claim !== "string" ||
+        !claim.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Claim text is required",
+        });
+      }
+
+      const result = await extractClaimData(
+        claim.trim()
+      );
+
+      return res.json({
+        success: true,
+        data: result.data || {},
+        source: result.source || "rules",
+      });
+    } catch (error) {
+      console.error(
+        "Extraction error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
-        error: "Claim text is required",
+        error:
+          error.message ||
+          "Extraction failed",
       });
     }
-
-    const { data, source } = await extractClaimData(claim.trim());
-
-    return res.json({
-      success: true,
-      data,
-      source, // "ai" if the LLM parsed it, "rules" if we fell back
-    });
-  } catch (error) {
-    console.error(
-      "Extraction error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      error: "Extraction failed",
-    });
   }
-});
+);
 
-/* =========================
-   Save New Claim
-========================= */
+/* =========================================================
+   SAVE CLAIM
+   POST /api/claims
+========================================================= */
 
-app.post("/api/claims", async (req, res) => {
-  try {
-    const {
-      claimText,
-      extractedData,
-    } = req.body;
+app.post(
+  "/api/claims",
+  protect,
+  async (req, res) => {
+    try {
+      const {
+        claimText,
+        extractedData,
+      } = req.body;
 
-    if (
-      typeof claimText !== "string" ||
-      !claimText.trim()
-    ) {
-      return res.status(400).json({
+      if (
+        typeof claimText !== "string" ||
+        !claimText.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Claim text is required",
+        });
+      }
+
+      const savedClaim = await Claim.create({
+        claimText: claimText.trim(),
+
+        extractedData:
+          extractedData || {},
+
+        user: req.user?._id,
+      });
+
+      return res.status(201).json({
+        success: true,
+        data: savedClaim,
+      });
+    } catch (error) {
+      console.error(
+        "Save claim error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
-        error: "Claim text is required",
+        error: "Failed to save claim",
       });
     }
-
-    const savedClaim = await Claim.create({
-      claimText: claimText.trim(),
-      extractedData: extractedData || {},
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: savedClaim,
-    });
-  } catch (error) {
-    console.error(
-      "Save claim error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      error: "Failed to save claim",
-    });
   }
-});
+);
 
-/* =========================
-   Get All Claims
-========================= */
+/* =========================================================
+   GET ALL CLAIMS
+   GET /api/claims
+========================================================= */
 
-app.get("/api/claims", async (req, res) => {
-  try {
-    const claims = await Claim.find()
-      .sort({
-        createdAt: -1,
+app.get(
+  "/api/claims",
+  protect,
+  async (req, res) => {
+    try {
+      const filter = req.user?._id
+        ? { user: req.user._id }
+        : {};
+
+      const claims = await Claim.find(filter)
+        .sort({
+          createdAt: -1,
+        });
+
+      return res.json({
+        success: true,
+        data: claims,
       });
+    } catch (error) {
+      console.error(
+        "Fetch claims error:",
+        error
+      );
 
-    return res.json({
-      success: true,
-      data: claims,
-    });
-  } catch (error) {
-    console.error(
-      "Fetch claims error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      error: "Failed to fetch claims",
-    });
+      return res.status(500).json({
+        success: false,
+        error: "Failed to fetch claims",
+      });
+    }
   }
-});
+);
 
-/* =========================
-   Get Single Claim
-========================= */
+/* =========================================================
+   GET SINGLE CLAIM
+   GET /api/claims/:id
+========================================================= */
 
 app.get(
   "/api/claims/:id",
+  protect,
   async (req, res) => {
     try {
       if (
@@ -241,10 +290,16 @@ app.get(
         });
       }
 
+      const filter = {
+        _id: req.params.id,
+      };
+
+      if (req.user?._id) {
+        filter.user = req.user._id;
+      }
+
       const claim =
-        await Claim.findById(
-          req.params.id
-        );
+        await Claim.findOne(filter);
 
       if (!claim) {
         return res.status(404).json({
@@ -259,7 +314,7 @@ app.get(
       });
     } catch (error) {
       console.error(
-        "Fetch single claim error:",
+        "Fetch claim error:",
         error
       );
 
@@ -271,19 +326,16 @@ app.get(
   }
 );
 
-/* =========================
-   Update Claim
-========================= */
+/* =========================================================
+   UPDATE CLAIM
+   PUT /api/claims/:id
+========================================================= */
 
 app.put(
   "/api/claims/:id",
+  protect,
   async (req, res) => {
     try {
-      const {
-        claimText,
-        extractedData,
-      } = req.body;
-
       if (
         !mongoose.Types.ObjectId.isValid(
           req.params.id
@@ -295,6 +347,11 @@ app.put(
         });
       }
 
+      const {
+        claimText,
+        extractedData,
+      } = req.body;
+
       if (
         typeof claimText !== "string" ||
         !claimText.trim()
@@ -305,9 +362,17 @@ app.put(
         });
       }
 
+      const filter = {
+        _id: req.params.id,
+      };
+
+      if (req.user?._id) {
+        filter.user = req.user._id;
+      }
+
       const updatedClaim =
-        await Claim.findByIdAndUpdate(
-          req.params.id,
+        await Claim.findOneAndUpdate(
+          filter,
           {
             claimText: claimText.trim(),
             extractedData:
@@ -344,12 +409,14 @@ app.put(
   }
 );
 
-/* =========================
-   Delete Claim
-========================= */
+/* =========================================================
+   DELETE CLAIM
+   DELETE /api/claims/:id
+========================================================= */
 
 app.delete(
   "/api/claims/:id",
+  protect,
   async (req, res) => {
     try {
       if (
@@ -363,9 +430,17 @@ app.delete(
         });
       }
 
+      const filter = {
+        _id: req.params.id,
+      };
+
+      if (req.user?._id) {
+        filter.user = req.user._id;
+      }
+
       const deletedClaim =
-        await Claim.findByIdAndDelete(
-          req.params.id
+        await Claim.findOneAndDelete(
+          filter
         );
 
       if (!deletedClaim) {
@@ -377,7 +452,8 @@ app.delete(
 
       return res.json({
         success: true,
-        message: "Claim deleted successfully",
+        message:
+          "Claim deleted successfully",
       });
     } catch (error) {
       console.error(
@@ -393,17 +469,19 @@ app.delete(
   }
 );
 
-/* =========================
-   Smart Missing-Field Detection
-   + Claim Readiness Score
-========================= */
+/* =========================================================
+   CHECK MISSING FIELDS
+   POST /api/claims/check-missing
+========================================================= */
 
 app.post(
   "/api/claims/check-missing",
+  protect,
   async (req, res) => {
     try {
-      const { extractedData } =
-        req.body;
+      const {
+        extractedData,
+      } = req.body;
 
       if (!extractedData) {
         return res.status(400).json({
@@ -415,13 +493,15 @@ app.post(
 
       const missingFields = [];
 
-      /* =========================
-         Common Required Fields
-      ========================= */
+      const value = (field) =>
+        typeof extractedData[field] ===
+        "string"
+          ? extractedData[field].trim()
+          : "";
 
-      if (
-        !extractedData.incidentType?.trim()
-      ) {
+      /* Common fields */
+
+      if (!value("incidentType")) {
         missingFields.push({
           field: "incidentType",
           label: "Incident Type",
@@ -430,9 +510,7 @@ app.post(
         });
       }
 
-      if (
-        !extractedData.vehicle?.trim()
-      ) {
+      if (!value("vehicle")) {
         missingFields.push({
           field: "vehicle",
           label: "Vehicle",
@@ -441,9 +519,7 @@ app.post(
         });
       }
 
-      if (
-        !extractedData.location?.trim()
-      ) {
+      if (!value("location")) {
         missingFields.push({
           field: "location",
           label: "Location",
@@ -452,9 +528,7 @@ app.post(
         });
       }
 
-      if (
-        !extractedData.damage?.trim()
-      ) {
+      if (!value("damage")) {
         missingFields.push({
           field: "damage",
           label: "Damage",
@@ -463,9 +537,7 @@ app.post(
         });
       }
 
-      if (
-        !extractedData.date?.trim()
-      ) {
+      if (!value("date")) {
         missingFields.push({
           field: "date",
           label: "Incident Date",
@@ -474,14 +546,14 @@ app.post(
         });
       }
 
-      /* =========================
-         Theft-Specific Field
-      ========================= */
+      const incidentType =
+        value("incidentType").toLowerCase();
+
+      /* Theft */
 
       if (
-        extractedData.incidentType ===
-          "Theft" &&
-        !extractedData.policeReportNumber?.trim()
+        incidentType === "theft" &&
+        !value("policeReportNumber")
       ) {
         missingFields.push({
           field:
@@ -489,18 +561,16 @@ app.post(
           label:
             "Police Report Number",
           message:
-            "A police report number is required for theft claims.",
+            "Please provide the police report number.",
         });
       }
 
-      /* =========================
-         Animal Collision Field
-      ========================= */
+      /* Animal */
 
       if (
-        extractedData.incidentType ===
-          "Animal Collision" &&
-        !extractedData.animalDetails?.trim()
+        incidentType ===
+          "animal collision" &&
+        !value("animalDetails")
       ) {
         missingFields.push({
           field: "animalDetails",
@@ -510,31 +580,28 @@ app.post(
         });
       }
 
-      /* =========================
-         Readiness Score
-      ========================= */
+      const totalRequired =
+        incidentType === "theft" ||
+        incidentType ===
+          "animal collision"
+          ? 7
+          : 5;
 
-      const isConditionalClaim =
-        extractedData.incidentType ===
-          "Theft" ||
-        extractedData.incidentType ===
-          "Animal Collision";
+      const completed =
+        totalRequired -
+        missingFields.length;
 
-      const totalRequiredFields =
-        isConditionalClaim ? 7 : 5;
-
-      const completedFields = Math.max(
+      const readinessScore = Math.max(
         0,
-        totalRequiredFields -
-          missingFields.length
+        Math.min(
+          100,
+          Math.round(
+            (completed /
+              totalRequired) *
+              100
+          )
+        )
       );
-
-      const readinessScore =
-        Math.round(
-          (completedFields /
-            totalRequiredFields) *
-            100
-        );
 
       return res.json({
         success: true,
@@ -547,7 +614,7 @@ app.post(
       });
     } catch (error) {
       console.error(
-        "Missing field detection error:",
+        "Missing field error:",
         error
       );
 
@@ -560,12 +627,14 @@ app.post(
   }
 );
 
-/* =========================
-   AI-Generated Claim Summary
-========================= */
+/* =========================================================
+   GENERATE SUMMARY
+   POST /api/claims/generate-summary
+========================================================= */
 
 app.post(
   "/api/claims/generate-summary",
+  protect,
   async (req, res) => {
     try {
       const {
@@ -592,10 +661,6 @@ app.post(
         });
       }
 
-      /* =========================
-         Mock AI Summary
-      ========================= */
-
       const incidentType =
         extractedData.incidentType ||
         "insurance incident";
@@ -608,13 +673,13 @@ app.post(
         extractedData.location ||
         "location not provided";
 
-      const damage =
-        extractedData.damage ||
-        "damage details not provided";
-
       const date =
         extractedData.date ||
         "incident date not provided";
+
+      const damage =
+        extractedData.damage ||
+        "damage details not provided";
 
       let summary =
         `The policyholder reported a ${incidentType.toLowerCase()} involving ${vehicle}. ` +
@@ -641,7 +706,7 @@ app.post(
       });
     } catch (error) {
       console.error(
-        "Generate summary error:",
+        "Summary error:",
         error
       );
 
@@ -654,12 +719,14 @@ app.post(
   }
 );
 
-/* =========================
-   Upload Claim Evidence
-========================= */
+/* =========================================================
+   UPLOAD EVIDENCE
+   POST /api/claims/:id/evidence
+========================================================= */
 
 app.post(
   "/api/claims/:id/evidence",
+  protect,
   upload.array("evidence", 5),
   async (req, res) => {
     try {
@@ -674,10 +741,16 @@ app.post(
         });
       }
 
+      const filter = {
+        _id: req.params.id,
+      };
+
+      if (req.user?._id) {
+        filter.user = req.user._id;
+      }
+
       const claim =
-        await Claim.findById(
-          req.params.id
-        );
+        await Claim.findOne(filter);
 
       if (!claim) {
         return res.status(404).json({
@@ -746,17 +819,12 @@ app.post(
   }
 );
 
-/* =========================
-   Multer Error Handler
-========================= */
+/* =========================================================
+   MULTER ERROR HANDLER
+========================================================= */
 
 app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
+  (error, req, res, next) => {
     if (
       error instanceof multer.MulterError
     ) {
@@ -778,9 +846,7 @@ app.use(
     }
 
     if (
-      error &&
-      error.message &&
-      error.message.includes(
+      error?.message?.includes(
         "Only JPG"
       )
     ) {
@@ -794,34 +860,30 @@ app.use(
   }
 );
 
-/* =========================
-   General Error Handler
-========================= */
+/* =========================================================
+   GENERAL ERROR HANDLER
+========================================================= */
 
 app.use(
-  (
-    error,
-    req,
-    res,
-    next
-  ) => {
+  (error, req, res, next) => {
     console.error(
       "Unhandled server error:",
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      error: "Internal server error",
+      error:
+        "Internal server error",
     });
   }
 );
 
-/* =========================
-   MongoDB + Start Server
-========================= */
+/* =========================================================
+   MONGODB
+========================================================= */
 
-const startServer = async () => {
+async function startServer() {
   try {
     if (!process.env.MONGODB_URI) {
       console.error(
@@ -832,7 +894,10 @@ const startServer = async () => {
     }
 
     await mongoose.connect(
-      process.env.MONGODB_URI
+      process.env.MONGODB_URI,
+      {
+        serverSelectionTimeoutMS: 10000,
+      }
     );
 
     console.log(
@@ -856,6 +921,6 @@ const startServer = async () => {
 
     process.exit(1);
   }
-};
+}
 
 startServer();

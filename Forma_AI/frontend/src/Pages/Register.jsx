@@ -10,15 +10,6 @@ export default function Register() {
 
   const handleRegister = async (event) => {
     event.preventDefault();
-
-    // Yahan tumhari existing register API call hogi.
-    //
-    // await api.register({
-    //   name,
-    //   email,
-    //   password,
-    // });
-
     navigate("/login");
   };
 
@@ -29,7 +20,7 @@ export default function Register() {
 
         <h1>Create your account</h1>
 
-        <p>Register to start using Forma AI.</p>
+        <p>Register here to start using Forma AI</p>
 
         <form onSubmit={handleRegister}>
           <label>Name</label>

@@ -10,17 +10,6 @@ export default function Login() {
   const handleLogin = async (event) => {
     event.preventDefault();
 
-    // Yahan tumhari existing login API call hogi.
-    // Example:
-    //
-    // const result = await api.login(email, password);
-
-    // Successful login ke baad:
-    // localStorage.setItem("forma_token", result.token);
-    // localStorage.setItem(
-    //   "forma_user",
-    //   JSON.stringify(result.user)
-    // );
 
     navigate("/claims");
   };

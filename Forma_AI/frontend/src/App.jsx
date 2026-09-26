@@ -90,12 +90,10 @@ function AppContent() {
   const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Load the saved-claims list once, lazily, the first time it's needed.
   useEffect(() => {
     if (activeTab === "saved" && !claimsLoaded) {
       loadClaims();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const resetResults = () => {

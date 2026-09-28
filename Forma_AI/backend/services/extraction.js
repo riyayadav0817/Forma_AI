@@ -1,15 +1,5 @@
 const { z } = require("zod");
 
-/* =========================================================
-   Forma AI — Claim Extraction Service
-   ---------------------------------------------------------
-   Turns a free-text claim story into the structured fields
-   the dynamic form needs. Tries the real LLM first (OpenAI)
-   and falls back to a deterministic keyword-based parser so
-   the app keeps working even without an API key or if the
-   AI call fails / times out.
-========================================================= */
-
 const ExtractionSchema = z.object({
   incidentType: z.string().default(""),
   vehicle: z.string().default(""),
@@ -30,11 +20,6 @@ const EMPTY_RESULT = {
   animalDetails: "",
 };
 
-/* =========================================================
-   Rule-Based Fallback Extraction
-   (deterministic keyword matching — always available,
-   zero cost, zero external dependency)
-========================================================= */
 
 function ruleBasedExtract(claim) {
   const text = claim.toLowerCase();

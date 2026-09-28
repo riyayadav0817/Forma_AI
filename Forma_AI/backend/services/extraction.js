@@ -88,9 +88,6 @@ function ruleBasedExtract(claim) {
   };
 }
 
-/* =========================================================
-   LLM Extraction (OpenAI)
-========================================================= */
 
 const SYSTEM_PROMPT = `You are the extraction engine for Forma AI, a dynamic insurance claim form.
 Read the policyholder's free-text claim story and extract structured fields.
@@ -112,7 +109,6 @@ async function llmExtract(claim) {
   }
 
   try {
-    // Lazy-require so the app still boots if the package or key is missing.
     const OpenAI = require("openai");
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -144,9 +140,6 @@ async function llmExtract(claim) {
   }
 }
 
-/* =========================================================
-   Public API
-========================================================= */
 
 async function extractClaimData(claim) {
   const aiResult = await llmExtract(claim);

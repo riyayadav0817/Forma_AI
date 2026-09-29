@@ -3,6 +3,13 @@ const API_BASE =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000/api";
 
+// Fires whenever a protected request comes back unauthorized so the
+// app can clear the stale session and bounce to /login in one place,
+// instead of every caller having to handle it individually.
+const SESSION_EXPIRED_EVENT = "forma:session-expired";
+
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/register"];
+
 async function request(
   endpoint,
   options = {}
@@ -35,15 +42,17 @@ async function request(
     }
   );
 
-  let data = {};
-
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
+  const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    const isAuthCall = AUTH_ENDPOINTS.some((path) =>
+      endpoint.startsWith(path)
+    );
+
+    if (response.status === 401 && !isAuthCall) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+    }
+
     throw new Error(
       data.error ||
         `Request failed (${response.status})`
@@ -52,6 +61,8 @@ async function request(
 
   return data;
 }
+
+export { SESSION_EXPIRED_EVENT };
 
 /* =========================
    AUTH
@@ -84,6 +95,10 @@ export const api = {
         password,
       }),
     });
+  },
+
+  me: async () => {
+    return request("/auth/me");
   },
 
   /* =========================

@@ -1,0 +1,563 @@
+/* =========================================================
+   Forma AI — Auth Pages
+   Login / Register
+========================================================= */
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* =========================================================
+   LEFT BRAND PANEL
+========================================================= */
+
+.auth-page__brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px 48px;
+  background: linear-gradient(
+    160deg,
+    var(--navy) 0%,
+    var(--navy-dark) 100%
+  );
+  color: #fff;
+  overflow: hidden;
+}
+
+.auth-page__brand::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto auto;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(15, 118, 110, 0.55),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.auth-page__brand::after {
+  content: "";
+  position: absolute;
+  left: -12%;
+  bottom: -18%;
+  width: 340px;
+  height: 340px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.08),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Brand top */
+
+.auth-page__brand-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.auth-page__brand-top .logo-mark {
+  background: linear-gradient(
+    135deg,
+    #ffffff,
+    #ccfbf1
+  );
+  color: var(--navy-dark);
+}
+
+.auth-page__brand-top span {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+/* Brand middle */
+
+.auth-page__brand-mid {
+  position: relative;
+  z-index: 1;
+  max-width: 380px;
+}
+
+.auth-page__brand-mid h2 {
+  margin: 0 0 14px;
+
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.5px;
+}
+
+.auth-page__brand-mid p {
+  margin: 0;
+
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Stats */
+
+.auth-page__stats {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  gap: 28px;
+}
+
+.auth-page__stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.auth-page__stats strong {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.auth-page__stats span {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* =========================================================
+   RIGHT FORM AREA
+========================================================= */
+
+.auth-page__form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 40px 24px;
+
+  background: var(--bg);
+}
+
+/* =========================================================
+   AUTH CARD
+========================================================= */
+
+.auth-card {
+  width: min(100%, 400px);
+
+  padding: 38px 36px;
+
+  background: var(--surface);
+
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* Mobile logo */
+
+.auth-card__mobile-brand {
+  display: none;
+
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 22px;
+}
+
+/* =========================================================
+   HEADINGS
+========================================================= */
+
+.auth-card h1 {
+  margin: 0;
+
+  color: var(--text);
+
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+}
+
+.auth-card > p {
+  margin: 8px 0 26px;
+
+  color: var(--text-muted);
+
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* =========================================================
+   INPUT FIELD
+========================================================= */
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  margin-bottom: 14px;
+}
+
+.auth-field label {
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Input wrapper */
+
+.auth-field .input-wrap {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+}
+
+/* Left icon */
+
+.auth-field .input-wrap svg {
+  position: absolute;
+  left: 13px;
+
+  color: var(--text-faint);
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+.auth-field input {
+  width: 100%;
+  height: 46px;
+
+  padding: 0 13px 0 40px;
+
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+
+  outline: none;
+
+  font-family: inherit;
+  font-size: 14.5px;
+
+  /* Typed text = BLACK */
+  color: #000000 !important;
+
+  /* White input background */
+  background: #ffffff;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+/* =========================================================
+   PASSWORD + TEXT INPUT
+   Keeps password black when eye button reveals it
+========================================================= */
+
+.auth-field input[type="password"],
+.auth-field input[type="text"] {
+  color: #000000 !important;
+
+  /*
+    Required for some browsers,
+    especially Chrome/Safari autofill/password rendering.
+  */
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+
+.auth-field input::placeholder {
+  color: var(--text-faint);
+  opacity: 1;
+}
+
+/* =========================================================
+   INPUT FOCUS
+========================================================= */
+
+.auth-field input:focus {
+  border-color: var(--brand);
+
+  box-shadow:
+    0 0 0 4px rgba(15, 118, 110, 0.12);
+}
+
+/* =========================================================
+   PASSWORD VISIBILITY BUTTON
+========================================================= */
+
+.auth-field .toggle-visibility {
+  position: absolute;
+  right: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: none;
+  border: none;
+
+  min-height: auto;
+
+  padding: 6px;
+  margin: 0;
+
+  color: var(--text-faint);
+
+  cursor: pointer;
+
+  transition: color 0.2s ease;
+}
+
+.auth-field .toggle-visibility:hover {
+  color: var(--text-muted);
+}
+
+/* =========================================================
+   ERROR MESSAGE
+========================================================= */
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+
+  margin-bottom: 16px;
+  padding: 11px 13px;
+
+  border-radius: var(--radius-sm);
+
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+
+  color: #991b1b;
+
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.auth-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* =========================================================
+   SUBMIT BUTTON
+========================================================= */
+
+.auth-card .btn {
+  width: 100%;
+  height: 46px;
+
+  margin-top: 8px;
+}
+
+/* =========================================================
+   BOTTOM AUTH LINK
+========================================================= */
+
+.auth-link {
+  text-align: center;
+
+  margin-top: 22px !important;
+
+  font-size: 13.5px;
+
+  color: var(--text-muted);
+}
+
+.auth-link a {
+  color: var(--brand-dark);
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+.auth-link a:hover {
+  text-decoration: underline;
+}
+
+/* =========================================================
+   BACK TO HOME
+========================================================= */
+
+.auth-back-home {
+  position: absolute;
+
+  top: 24px;
+  left: 24px;
+
+  display: none;
+  align-items: center;
+
+  gap: 6px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  color: var(--text-muted);
+
+  text-decoration: none;
+}
+
+.auth-back-home:hover {
+  color: var(--text);
+}
+
+/* =========================================================
+   AUTOFILL FIX
+   Prevents browser from changing password/email text color.
+========================================================= */
+
+.auth-field input:-webkit-autofill,
+.auth-field input:-webkit-autofill:hover,
+.auth-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #000000 !important;
+
+  transition:
+    background-color 9999s ease-in-out 0s;
+}
+
+/* =========================================================
+   RESPONSIVE — TABLET / MOBILE
+========================================================= */
+
+@media (max-width: 900px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-page__brand {
+    display: none;
+  }
+
+  .auth-card__mobile-brand {
+    display: flex;
+  }
+
+  .auth-back-home {
+    display: inline-flex;
+  }
+}
+
+/* =========================================================
+   RESPONSIVE — SMALL MOBILE
+========================================================= */
+
+@media (max-width: 460px) {
+  .auth-page__form {
+    padding: 32px 16px;
+  }
+
+  .auth-card {
+    padding: 28px 22px;
+
+    border-radius: 16px;
+  }
+
+  .auth-card h1 {
+    font-size: 24px;
+  }
+}
+
+/* =========================================================
+   VERY SMALL SCREENS
+========================================================= */
+
+@media (max-width: 360px) {
+  .auth-card {
+    padding: 24px 18px;
+  }
+
+  .auth-card h1 {
+    font-size: 22px;
+  }
+
+  .auth-field input {
+    height: 44px;
+    font-size: 14px;
+  }
+}
+/* =========================================================
+   PASSWORD VISIBILITY BUTTON
+========================================================= */
+
+.auth-field .input-wrap {
+  position: relative;
+}
+
+.auth-field .toggle-visibility {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  background: transparent;
+
+  color: #64748b;
+
+  cursor: pointer;
+
+  z-index: 20;
+
+  pointer-events: auto;
+}
+
+.auth-field .toggle-visibility:hover {
+  color: #0f172a;
+}
+
+.auth-field .toggle-visibility:focus {
+  outline: none;
+}
+
+.auth-field .toggle-visibility svg {
+  position: static;
+  left: auto;
+
+  pointer-events: none;
+}

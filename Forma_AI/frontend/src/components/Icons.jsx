@@ -132,3 +132,71 @@ export const GaugeIcon = (props) => (
     <path d="M4.6 15A9 9 0 1 1 12 21a8.96 8.96 0 0 1-7.4-6" />
   </svg>
 );
+
+export const MailIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m4 7 8 6 8-6" />
+  </svg>
+);
+
+export const LockIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="4" y="11" width="16" height="9" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
+
+export const UserIcon = (props) => (
+  <svg {...base} {...props}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6" />
+  </svg>
+);
+
+export const EyeIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const EyeOffIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M3 3l18 18" />
+    <path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c7 0 10.5 7 10.5 7a13.4 13.4 0 0 1-3.1 4.1M6.6 6.6C3.4 8.5 1.5 12 1.5 12S5 19 12 19a10.6 10.6 0 0 0 4-.8" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+  </svg>
+);
+
+export const ShieldIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6Z" />
+    <path d="m9.5 12 1.8 1.8L14.5 10" />
+  </svg>
+);
+
+export const ArrowRightIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
+);
+
+export const ArrowLeftIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M19 12H5M11 18l-6-6 6-6" />
+  </svg>
+);
+
+export const LayersIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="m12 3 9 5-9 5-9-5 9-5Z" />
+    <path d="m3 13 9 5 9-5" />
+  </svg>
+);
+
+export const ZapIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />
+  </svg>
+);

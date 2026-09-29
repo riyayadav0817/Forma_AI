@@ -1,3 +1,8 @@
+/* eslint-disable react-refresh/only-export-components --
+   This file intentionally exports both the ToastProvider component and
+   the useToast hook together — they're tightly coupled and always used
+   as a pair, so splitting them into separate files would hurt more than
+   the (dev-only) fast-refresh granularity it costs. */
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { CheckCircleIcon, AlertIcon, XIcon } from "./Icons";
 

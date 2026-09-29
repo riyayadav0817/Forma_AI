@@ -211,7 +211,7 @@ app.post(
         extractedData:
           extractedData || {},
 
-        user: req.user?._id,
+        userId: req.user?._id,
       });
 
       return res.status(201).json({
@@ -243,7 +243,7 @@ app.get(
   async (req, res) => {
     try {
       const filter = req.user?._id
-        ? { user: req.user._id }
+        ? { userId: req.user._id }
         : {};
 
       const claims = await Claim.find(filter)
@@ -295,7 +295,7 @@ app.get(
       };
 
       if (req.user?._id) {
-        filter.user = req.user._id;
+        filter.userId = req.user._id;
       }
 
       const claim =
@@ -367,7 +367,7 @@ app.put(
       };
 
       if (req.user?._id) {
-        filter.user = req.user._id;
+        filter.userId = req.user._id;
       }
 
       const updatedClaim =
@@ -435,7 +435,7 @@ app.delete(
       };
 
       if (req.user?._id) {
-        filter.user = req.user._id;
+        filter.userId = req.user._id;
       }
 
       const deletedClaim =
@@ -746,7 +746,7 @@ app.post(
       };
 
       if (req.user?._id) {
-        filter.user = req.user._id;
+        filter.userId = req.user._id;
       }
 
       const claim =

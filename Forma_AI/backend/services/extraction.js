@@ -1,5 +1,15 @@
 const { z } = require("zod");
 
+/* =========================================================
+   Forma AI — Claim Extraction Service
+   ---------------------------------------------------------
+   Turns a free-text claim story into the structured fields
+   the dynamic form needs. Tries the real LLM first (OpenAI)
+   and falls back to a deterministic keyword-based parser so
+   the app keeps working even without an API key or if the
+   AI call fails / times out.
+========================================================= */
+
 const ExtractionSchema = z.object({
   incidentType: z.string().default(""),
   vehicle: z.string().default(""),
@@ -20,6 +30,11 @@ const EMPTY_RESULT = {
   animalDetails: "",
 };
 
+/* =========================================================
+   Rule-Based Fallback Extraction
+   (deterministic keyword matching — always available,
+   zero cost, zero external dependency)
+========================================================= */
 
 function ruleBasedExtract(claim) {
   const text = claim.toLowerCase();
@@ -88,6 +103,9 @@ function ruleBasedExtract(claim) {
   };
 }
 
+/* =========================================================
+   LLM Extraction (OpenAI)
+========================================================= */
 
 const SYSTEM_PROMPT = `You are the extraction engine for Forma AI, a dynamic insurance claim form.
 Read the policyholder's free-text claim story and extract structured fields.
@@ -109,6 +127,7 @@ async function llmExtract(claim) {
   }
 
   try {
+    // Lazy-require so the app still boots if the package or key is missing.
     const OpenAI = require("openai");
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -140,6 +159,9 @@ async function llmExtract(claim) {
   }
 }
 
+/* =========================================================
+   Public API
+========================================================= */
 
 async function extractClaimData(claim) {
   const aiResult = await llmExtract(claim);
